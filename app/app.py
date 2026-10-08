@@ -26,9 +26,11 @@ st.set_page_config(
 )
 
 # ==========================================
-# PATHS
+# PATHS (Auto-detect for both local & cloud)
 # ==========================================
-BASE_PATH = r'D:\DA projects\Covid-19-portfolio'
+# app.py is at: <project_root>/app/app.py
+# Project root is one level up from app/
+BASE_PATH = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA_PATH = os.path.join(BASE_PATH, 'data', 'processed')
 MODELS_PATH = os.path.join(BASE_PATH, 'models')
 
