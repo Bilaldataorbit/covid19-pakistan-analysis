@@ -81,9 +81,9 @@ This project provides a **comprehensive analysis of COVID-19 data in Pakistan** 
 
 🚀 **Try the interactive dashboard here:**
 
-👉 **[covid19-pakistan-analysis.streamlit.app](https://covid19-pakistan-analysis.streamlit.app)**
+👉 **[covid19-pakistan-analysis.streamlit.app](https://covid19-pakistan-analysis-n43mjecpftd2atum26wylp.streamlit.app)**
 
-*Coming soon — deployment in progress*
+[![Open in Streamlit](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://covid19-pakistan-analysis-n43mjecpftd2atum26wylp.streamlit.app)
 
 The dashboard allows you to:
 
