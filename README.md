@@ -1,4 +1,3 @@
-markdown
 <div align="center">
 
 # 🦠 COVID-19 Pakistan Analysis
