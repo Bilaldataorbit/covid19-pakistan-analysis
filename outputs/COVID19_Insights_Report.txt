@@ -1,0 +1,63 @@
+
+============================================================
+PAKISTAN COVID-19 ANALYSIS REPORT
+Generated: 2026-10-09 09:42
+============================================================
+
+1. OVERVIEW
+------------------------------------------------------------
+Date Range:     Feb 26, 2020 to Jun 03, 2020
+Total Records:  2,798
+Provinces:      8
+Cities:         125
+
+2. KEY METRICS
+------------------------------------------------------------
+Total Cases:        83,986
+Total Deaths:       1,728
+Total Recovered:    24,754
+Active Cases:       57,504
+
+National CFR:       2.06%
+Recovery Rate:      29.47%
+
+3. TOP 3 PROVINCES (by Cases)
+------------------------------------------------------------
+1. Sindh: 32,858 cases (39.1%)
+2. Punjab: 31,096 cases (37.0%)
+3. Khyber Pakhtunkhwa: 10,259 cases (12.2%)
+
+4. TOP 5 CITIES (by Cases)
+------------------------------------------------------------
+1. Karachi (Sindh): 29,346 cases
+2. Lahore (Punjab): 28,015 cases
+3. Quetta (Baluchistan): 5,109 cases
+4. Peshawar (Khyber Pakhtunkhwa): 4,923 cases
+5. Islamabad (Islamabad Capital Territory): 3,523 cases
+
+5. TRAVEL HISTORY INSIGHTS
+------------------------------------------------------------
+Local - Social Contact: 58,919 cases (2499 records)
+Unknown: 22,659 cases (159 records)
+Tableeghi Jamaat: 1,115 cases (23 records)
+Iran/Taftan: 1,053 cases (88 records)
+Jail: 107 cases (5 records)
+
+6. STATISTICAL FINDINGS
+------------------------------------------------------------
+Avg Daily Cases:        923
+Avg Daily Deaths:       19
+Max Daily Cases:        4,677 on Jun 03, 2020
+Max Daily Deaths:       88 on May 30, 2020
+
+Cases vs Deaths Correlation:     0.930
+Cases vs Recovered Correlation:  0.787
+
+7. PEAK ANALYSIS
+------------------------------------------------------------
+Peak Cases Day:   Jun 03, 2020 (4,677 cases)
+Peak Deaths Day:  May 30, 2020 (88 deaths)
+
+============================================================
+END OF REPORT
+============================================================
