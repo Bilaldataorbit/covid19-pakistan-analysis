@@ -1,0 +1,9 @@
+# GitHub Language Detection
+# Exclude HTML files (interactive Plotly charts) from language stats
+*.html linguist-detectable=false
+
+# Exclude notebooks from being counted as HTML
+*.ipynb linguist-detectable=true
+
+# Ensure Python is detected
+*.py linguist-detectable=true
