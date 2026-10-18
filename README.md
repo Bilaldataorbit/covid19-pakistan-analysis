@@ -5,18 +5,26 @@ a Streamlit dashboard and automated reports — all built on one cleaned dataset
 Pakistan's COVID-19 records from **26 Feb 2020 to 03 Jun 2020**.
 
 <p align="left">
-  <img alt="Python" src="https://img.shields.io/badge/Python-3.14-3776AB?logo=python&logoColor=white">
-  <img alt="pandas" src="https://img.shields.io/badge/pandas-3.0-150458?logo=pandas&logoColor=white">
-  <img alt="scikit-learn" src="https://img.shields.io/badge/scikit--learn-1.9-F7931E?logo=scikitlearn&logoColor=white">
-  <img alt="statsmodels" src="https://img.shields.io/badge/statsmodels-0.15-3F4F75">
-  <img alt="Streamlit" src="https://img.shields.io/badge/Streamlit-1.x-FF4B4B?logo=streamlit&logoColor=white">
-  <img alt="Plotly" src="https://img.shields.io/badge/Plotly-7.1-3F4F75?logo=plotly&logoColor=white">
+  <a href="https://covid19-pakistan-analysis-n43mjecpftd2atum26wylp.streamlit.app"><img alt="Open in Streamlit" src="https://static.streamlit.io/badges/streamlit_badge_black_white.svg"></a>
+  <img alt="Python" src="https://img.shields.io/badge/Python-3.12-3776AB?logo=python&logoColor=white">
+  <img alt="pandas" src="https://img.shields.io/badge/pandas-2.x-150458?logo=pandas&logoColor=white">
+  <img alt="scikit-learn" src="https://img.shields.io/badge/scikit--learn-1.x-F7931E?logo=scikitlearn&logoColor=white">
+  <img alt="statsmodels" src="https://img.shields.io/badge/statsmodels-0.14-3F4F75">
+  <img alt="Plotly" src="https://img.shields.io/badge/Plotly-5.x-3F4F75?logo=plotly&logoColor=white">
 </p>
+
+> ### 🌐 Live dashboard
+> **<https://covid19-pakistan-analysis-n43mjecpftd2atum26wylp.streamlit.app>**
+>
+> The app reads the cleaned CSVs and the ARIMA forecast that are committed to this repo, so it
+> always matches the numbers in the report. If the link does not load, the deployment needs to be
+> reconnected — see [Deploying the dashboard](#deploying-the-dashboard-streamlit-community-cloud).
 
 ---
 
 ## Table of contents
 
+- [Live dashboard](#-live-dashboard)
 - [Project overview](#project-overview)
 - [Key findings](#key-findings)
 - [Data quality and what changed](#data-quality-and-what-changed)
@@ -27,6 +35,7 @@ Pakistan's COVID-19 records from **26 Feb 2020 to 03 Jun 2020**.
 - [Installation](#installation)
 - [Usage](#usage)
 - [Limitations](#limitations)
+- [Deploying the dashboard](#deploying-the-dashboard-streamlit-community-cloud)
 - [Author](#author)
 
 ---
@@ -272,8 +281,19 @@ python -m venv venv
 venv\Scripts\activate
 # macOS / Linux
 source venv/bin/activate
+```
 
+**Dashboard only** (this is what Streamlit Cloud installs):
+
+```bash
 pip install -r requirements.txt
+```
+
+**Full pipeline** (adds matplotlib, seaborn, scipy and Jupyter so the notebooks and the
+figure/report scripts run):
+
+```bash
+pip install -r requirements-dev.txt
 ```
 
 ---
@@ -349,6 +369,92 @@ python src/arima_forecast.py && python src/visualizations.py && python src/repor
   lag construction. Any conclusion here is descriptive, not predictive at scale.
 
 ---
+
+## Deploying the dashboard (Streamlit Community Cloud)
+
+### "The app's code is not connected to a remote GitHub repository"
+
+That message comes from Streamlit Cloud, not from this project. It means Streamlit cannot read
+the repository it was pointed at. There are only four real causes:
+
+| Cause | Fix |
+|---|---|
+| **The repository is private** | Free Streamlit Cloud can only read **public** repos. Open the repo on GitHub → **Settings → General → Danger Zone → Change visibility → Make public**. |
+| **Streamlit was never granted access to GitHub** | In Streamlit Cloud click your avatar → **Settings → Linked accounts** → reconnect GitHub, and when GitHub asks, choose **"All repositories"** *(or explicitly tick this repo if you use "Only select repositories")*. |
+| **The app was created before the code was pushed** | Delete the broken app in Streamlit Cloud (**⋮ → Delete**) and create it again after the repo is public. |
+| **Wrong branch or wrong file path** | Use `main` and `app/app.py` exactly — see the settings table below. |
+
+The repository for this project is already public-code-ready: it contains `requirements.txt`
+at the root, the dashboard at `app/app.py`, and the data and model artefacts the app reads.
+
+The live app is expected at
+**<https://covid19-pakistan-analysis-n43mjecpftd2atum26wylp.streamlit.app>**.
+If that URL is dead, redeploying over the same app keeps the URL; creating a brand-new app
+produces a different one, so update this README when that happens.
+
+### Exact deployment settings
+
+When you click **New app** in Streamlit Cloud, fill the form exactly like this:
+
+| Field | Value |
+|---|---|
+| Repository | `Bilaldataorbit/covid19-pakistan-analysis` |
+| Branch | `main` |
+| Main file path | `app/app.py` |
+| App URL | anything you like, e.g. `covid19-pakistan` |
+
+Optional but recommended: open **Advanced settings** and set **Python version = 3.12**.
+
+### What the app needs at runtime
+
+The dashboard reads only files that are committed to the repo, so no database or API keys are
+required:
+
+```text
+data/processed/PK_COVID_19_cleaned.csv
+data/processed/daily_features.csv
+data/processed/province_summary.csv
+data/processed/city_summary.csv
+data/processed/travel_summary.csv
+models/covid_cases_model.pkl        # optional - see the note below
+models/model_features.pkl
+models/model_metadata.json
+outputs/arima_forecast_30d.csv
+outputs/arima_summary.json
+```
+
+### The app survives a model it cannot load
+
+A pickle is tied to the library versions that wrote it. Streamlit Cloud installs whatever
+`requirements.txt` allows, which may be a different scikit-learn build than the one used to
+train the model. The dashboard therefore treats the trained model as **optional**:
+
+- if the pickle loads → the "Next-day scenario" panel shows naive, 7-day average **and** the learner
+- if the pickle does not load → the panel still works with the two benchmark estimates, a
+  caption explains why, and every other tab (trend, geography, exposure source, distribution,
+  ARIMA forecast) is unaffected
+
+This was verified by deliberately corrupting the pickle and re-importing the app: it still
+starts, still reads the metadata and still draws the ARIMA forecast.
+
+### If the deploy build fails
+
+| Log message | Meaning | Fix |
+|---|---|---|
+| `ModuleNotFoundError: streamlit` | wrong requirements file | `requirements.txt` must sit in the **repo root** |
+| `FileNotFoundError: data/processed/...` | data not committed | re-add the CSV files and push |
+| `InconsistentVersionWarning` on unpickle | scikit-learn mismatch | harmless, the app falls back automatically |
+| `No such file: app/app.py` | wrong main file path | use `app/app.py`, not `app.py` |
+
+### Deploy from the command line instead
+
+```bash
+git add -A
+git commit -m "deploy: dashboard ready for Streamlit Cloud"
+git push origin main
+```
+
+Then create the app in the Streamlit Cloud web UI with the settings table above.
 
 ## Author
 

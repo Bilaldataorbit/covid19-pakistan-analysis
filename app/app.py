@@ -49,24 +49,62 @@ def load_frames():
 
 @st.cache_resource
 def load_artifacts():
-    with open(os.path.join(MODELS, "covid_cases_model.pkl"), "rb") as f:
-        model = pickle.load(f)
-    with open(os.path.join(MODELS, "model_features.pkl"), "rb") as f:
-        features = pickle.load(f)
-    meta = {}
+    """Load the trained model defensively.
+
+    A pickle is tied to the library versions that wrote it. Streamlit Cloud installs
+    whatever requirements.txt allows, which may be a different scikit-learn build, so a
+    failed unpickle must not take the whole dashboard down. The model is optional: the
+    dashboard still works with the naive and moving-average estimators, and with the
+    committed ARIMA forecast (a plain CSV, not a pickle).
+    """
+    model, features, meta, forecast = None, [], {}, None
+    notes = []
+
     meta_path = os.path.join(MODELS, "model_metadata.json")
     if os.path.exists(meta_path):
-        with open(meta_path, encoding="utf-8") as f:
-            meta = json.load(f)
-    forecast = None
+        try:
+            with open(meta_path, encoding="utf-8") as f:
+                meta = json.load(f)
+            features = meta.get("features", [])
+        except Exception as exc:                                    # noqa: BLE001
+            notes.append(f"model_metadata.json unreadable ({exc.__class__.__name__})")
+    else:
+        notes.append("model_metadata.json missing")
+
+    model_path = os.path.join(MODELS, "covid_cases_model.pkl")
+    if os.path.exists(model_path):
+        try:
+            with open(model_path, "rb") as f:
+                model = pickle.load(f)
+        except Exception as exc:                                    # noqa: BLE001
+            notes.append(
+                f"trained model could not be unpickled ({exc.__class__.__name__}); "
+                "the dashboard falls back to the naive and moving-average estimates"
+            )
+            model = None
+    else:
+        notes.append("covid_cases_model.pkl missing")
+
+    if not features and os.path.exists(os.path.join(MODELS, "model_features.pkl")):
+        try:
+            with open(os.path.join(MODELS, "model_features.pkl"), "rb") as f:
+                features = pickle.load(f)
+        except Exception:                                           # noqa: BLE001
+            features = []
+
     fc_path = os.path.join(BASE, "outputs", "arima_forecast_30d.csv")
     if os.path.exists(fc_path):
-        forecast = pd.read_csv(fc_path, parse_dates=["Date"])
-    return model, features, meta, forecast
+        try:
+            forecast = pd.read_csv(fc_path, parse_dates=["Date"])
+        except Exception as exc:                                    # noqa: BLE001
+            notes.append(f"ARIMA forecast unreadable ({exc.__class__.__name__})")
+
+    return model, features, meta, forecast, notes
 
 
 clean, daily, prov, city, travel = load_frames()
-model, features, meta, arima_fc = load_artifacts()
+model, features, meta, arima_fc, load_notes = load_artifacts()
+MODEL_OK = model is not None and bool(features)
 
 # ----------------------------------------------------------------------- header
 st.title("🦠 COVID-19 Pakistan — interactive analysis")
@@ -75,6 +113,10 @@ st.caption(
     f"{clean['Date'].max():%d %b %Y} · {clean['Province'].nunique()} provinces · "
     f"{clean['City'].nunique()} cities"
 )
+
+if load_notes:
+    for n in load_notes:
+        st.sidebar.caption("⚠️ " + n)
 
 # ----------------------------------------------------------------------- sidebar
 st.sidebar.header("Filters")
@@ -295,37 +337,46 @@ with tab_model:
 
     if st.button("Estimate tomorrow", type="primary"):
         recent = daily["Cases"].tail(14).values
-        row = {
-            "Lag_Cases_1": lag1,
-            "Lag_Cases_3": lag3,
-            "Lag_Cases_7": lag7,
-            "Lag_Deaths_1": float(daily["Deaths"].iloc[-1]),
-            "Lag_Recovered_1": float(daily["Recovered"].iloc[-1]),
-            "Roll_Mean_7": float(np.mean(recent[-7:])),
-            "Roll_Mean_14": float(np.mean(recent)),
-            "Roll_Std_7": float(np.std(recent[-7:], ddof=1)),
-            "Roll_Max_14": float(np.max(recent)),
-            "Cumul_Cases_Lag": float(daily["Cases"].sum()),
-            "DayOfWeek_Num": int(daily["Date"].iloc[-1].dayofweek),
-            "Month": int(daily["Date"].iloc[-1].month),
-            "CFR_Lag_1": float(daily["Deaths"].sum() / daily["Cases"].sum() * 100),
-            "Growth_Lag_1": float(daily["Cases"].pct_change().iloc[-1] * 100),
-        }
-        X = pd.DataFrame([row])[features]
-        learner = float(model.predict(X)[0])
+        naive_est = int(lag1)
+        ma7_est = float(np.mean(recent[-7:]))
 
-        k1, k2, k3 = st.columns(3)
-        k1.metric("Naive (tomorrow = today)", f"{lag1:,.0f}", "best hold-out model")
-        k2.metric("7-day average", f"{np.mean(recent[-7:]):,.0f}", "smoothed recent pace")
-        k3.metric("Trained learner", f"{learner:,.0f}", "underperforms the naive")
+        cols = st.columns(3 if MODEL_OK else 2)
+        cols[0].metric("Naive (tomorrow = today)", f"{naive_est:,.0f}", "best hold-out model")
+        cols[1].metric("7-day average", f"{ma7_est:,.0f}", "smoothed recent pace")
 
-        if learner < 0.5 * lag1 or learner > 2.0 * lag1:
-            st.info(
-                f"The learner returned {learner:,.0f}, which is more than 2x away from yesterday's "
-                f"{lag1:,}. That is expected: `Cumul_Cases_Lag` is {row['Cumul_Cases_Lag']:,.0f}, above "
-                f"the largest value it saw in training ({79000:,}), so the model is extrapolating "
-                "outside its range. Trust the naive or the 7-day average instead."
-            )
+        if MODEL_OK:
+            row = {
+                "Lag_Cases_1": lag1,
+                "Lag_Cases_3": lag3,
+                "Lag_Cases_7": lag7,
+                "Lag_Deaths_1": float(daily["Deaths"].iloc[-1]),
+                "Lag_Recovered_1": float(daily["Recovered"].iloc[-1]),
+                "Roll_Mean_7": ma7_est,
+                "Roll_Mean_14": float(np.mean(recent)),
+                "Roll_Std_7": float(np.std(recent[-7:], ddof=1)),
+                "Roll_Max_14": float(np.max(recent)),
+                "Cumul_Cases_Lag": float(daily["Cases"].sum()),
+                "DayOfWeek_Num": int(daily["Date"].iloc[-1].dayofweek),
+                "Month": int(daily["Date"].iloc[-1].month),
+                "CFR_Lag_1": float(daily["Deaths"].sum() / daily["Cases"].sum() * 100),
+                "Growth_Lag_1": float(daily["Cases"].pct_change(fill_method=None).iloc[-1] * 100),
+            }
+            try:
+                learner = float(model.predict(pd.DataFrame([row])[features])[0])
+                cols[2].metric("Trained learner", f"{learner:,.0f}", "underperforms the naive")
+                if learner < 0.5 * naive_est or learner > 2.0 * naive_est:
+                    st.info(
+                        f"The learner returned {learner:,.0f}, more than 2x away from yesterday's "
+                        f"{naive_est:,}. `Cumul_Cases_Lag` is {row['Cumul_Cases_Lag']:,.0f}, above the "
+                        "largest value it saw in training, so it is extrapolating outside its range. "
+                        "Trust the naive or the 7-day average instead."
+                    )
+            except Exception as exc:                                # noqa: BLE001
+                st.warning(f"The trained learner could not score this row ({exc.__class__.__name__}). "
+                           "Use the naive or 7-day estimate above.")
+        else:
+            st.caption("The trained model is not available in this deployment, so only the two "
+                       "benchmark estimates are shown.")
 
 # ------------------------------------------------------------------ data tab
 with tab_data:
@@ -339,4 +390,5 @@ with tab_data:
 
 st.divider()
 st.caption("Data: Pakistan COVID-19 tracking, 26 Feb – 03 Jun 2020 · "
-           "Built with pandas, scikit-learn, statsmodels and Plotly.")
+           "Built with pandas, scikit-learn, statsmodels and Plotly. "
+           f"Model status: {'loaded' if MODEL_OK else 'unavailable (benchmarks only)'}.")

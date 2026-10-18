@@ -1,0 +1,11 @@
+# Full development dependencies: everything in requirements.txt plus the libraries
+# used by the offline pipeline (figures, statistical tests, notebooks).
+# Install with:  pip install -r requirements-dev.txt
+
+-r requirements.txt
+
+matplotlib>=3.8,<4.0
+seaborn>=0.13,<1.0
+scipy>=1.11,<2.0
+jupyter>=1.0
+ipykernel>=6.0

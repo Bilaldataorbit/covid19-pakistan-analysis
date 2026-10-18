@@ -1,9 +1,26 @@
-# GitHub Language Detection
-# Exclude HTML files (interactive Plotly charts) from language stats
+# GitHub language detection
 *.html linguist-detectable=false
-
-# Exclude notebooks from being counted as HTML
 *.ipynb linguist-detectable=true
-
-# Ensure Python is detected
 *.py linguist-detectable=true
+
+# Binary files must never be line-ending converted, otherwise pickles, images
+# and workbooks get corrupted on clone (this is a common cause of a model that
+# loads locally but fails on Streamlit Cloud).
+*.pkl    binary
+*.pickle binary
+*.joblib binary
+*.png    binary
+*.jpg    binary
+*.jpeg   binary
+*.gif    binary
+*.xlsx   binary
+*.pdf    binary
+
+# Normalise text files
+*.py     text eol=lf
+*.md     text eol=lf
+*.txt    text eol=lf
+*.toml   text eol=lf
+*.csv    text eol=lf
+*.json   text eol=lf
+*.html   text eol=lf
