@@ -1,0 +1,9 @@
+Province,Cases,Deaths,Recovered,Records,Active,CFR,Recovery_Rate,Case_Share,Top_City
+Sindh,32858,546,15805,524,16507,1.66,48.1,39.12,Karachi
+Punjab,31096,593,4081,340,26422,1.91,13.12,37.03,Lahore
+Khyber Pakhtunkhwa,10259,473,1939,1416,7847,4.61,18.9,12.22,Peshawar
+Balochistan,5125,49,1981,83,3095,0.96,38.65,6.1,Quetta
+Islamabad Capital Territory,3523,36,460,74,3027,1.02,13.06,4.19,Islamabad
+Gilgit-Baltistan,786,24,362,184,400,3.05,46.06,0.94,Gilgit
+Azad Jammu Kashmir,285,6,110,54,169,2.11,38.6,0.34,Muzaffarabad
+Federally Administered Tribal Areas,53,1,15,36,37,1.89,28.3,0.06,Kurram

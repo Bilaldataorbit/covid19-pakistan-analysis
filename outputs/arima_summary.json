@@ -1,0 +1,25 @@
+{
+  "order": [
+    7,
+    2,
+    1
+  ],
+  "aic": 1048.6380000671272,
+  "bic": 1069.6146001297043,
+  "adf_levels_p": 1.0,
+  "holdout_metrics": {
+    "MAE": 644.5164090472867,
+    "RMSE": 768.5996420424004,
+    "MAPE": 32.555470049756174
+  },
+  "naive_holdout_mae": 347.23809523809524,
+  "seasonal_naive_holdout_mae": 860.8095238095239,
+  "horizon_days": 30,
+  "forecast_total": 247996,
+  "forecast_mean_daily": 8266.533333333333,
+  "forecast_peak_day": 11553,
+  "forecast_peak_date": "2020-07-03",
+  "forecast_min_day": 4842,
+  "observed_total": 83985,
+  "observed_last_date": "2020-06-03"
+}

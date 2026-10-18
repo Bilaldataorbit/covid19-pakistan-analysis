@@ -1,0 +1,70 @@
+
+============================================================
+MODULE 5: SAMPLING, PROBABILITY & HYPOTHESIS TESTING REPORT
+============================================================
+Generated: 2026-10-13 20:39
+Data Period: Feb 26 - Jun 3, 2020
+
+1. DATASET OVERVIEW
+------------------------------------------------------------
+Total Records:     2,798
+Unique Days:       91
+Provinces:         8
+Cities:            125
+
+2. SAMPLING RESULTS
+------------------------------------------------------------
+SRS (n=30):           mean = 940.00
+Systematic (k=3):     mean = 877.71
+Stratified (n=500):   mean = 25.84
+Cluster (5 cities):   mean = 16.60
+Population:           mean = 30.02
+
+3. SAMPLE SIZE (Cochran's Formula)
+------------------------------------------------------------
+For Mean (e=50):         n = 1595
+For Proportion (e=0.05): n = 385
+
+4. CENTRAL LIMIT THEOREM
+------------------------------------------------------------
+Population skewness:    1.4927
+Sample means skewness:  0.2999
+=> CLT holds - sample means are normally distributed
+
+5. PROBABILITY FINDINGS
+------------------------------------------------------------
+P(Cases > 500)          = 0.5495
+P(Sindh)                = 0.1891
+P(Sindh | Iran/Taftan)  = 0.2955
+P(Sindh | Death)        = 0.1527
+
+6. HYPOTHESIS TESTS
+------------------------------------------------------------
+                               Test                H0  Statistic    p-value       Decision
+                  One-Sample t-Test        Mean = 400     4.8967 4.2658e-06      Reject H0
+Two-Sample t-Test (Sindh vs Punjab)       Means equal    -1.7919 7.3667e-02 Fail to Reject
+ Paired t-Test (Before/After Apr 1)     Mean diff = 0    -8.4472 6.2836e-09      Reject H0
+     Chi-Square (Province x Travel)       Independent   627.8920 3.0331e-78      Reject H0
+          One-Way ANOVA (Provinces)   All means equal    26.6927 1.1868e-35      Reject H0
+   Mann-Whitney U (Sindh vs Punjab) Same distribution 77176.0000 3.0119e-04      Reject H0
+            Wilcoxon (Before/After) Same distribution     0.0000 1.4901e-08      Reject H0
+         Kruskal-Wallis (Provinces) Same distribution   433.6555 1.4342e-89      Reject H0
+          Levene's Test (Variances)    Equal variance    25.6902 2.9214e-34      Reject H0
+           Shapiro-Wilk (Normality)            Normal     0.8289 7.0804e-09      Reject H0
+
+7. CONCLUSION
+------------------------------------------------------------
+Total tests run:      10
+Tests rejected H0:    9
+Tests failed to reject: 1
+
+Key Findings:
+- Daily cases are NOT normally distributed (Shapiro p < 0.05)
+- Provinces have significantly different means (ANOVA/Kruskal p < 0.05)
+- Province and Travel History are dependent (Chi-square p < 0.05)
+- Cases before and after April 1 differ significantly
+- CLT confirmed - sample means approach normal distribution
+
+============================================================
+END OF REPORT
+============================================================

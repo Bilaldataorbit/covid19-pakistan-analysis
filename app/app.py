@@ -1,317 +1,273 @@
 """
-COVID-19 Pakistan Analysis — Interactive Dashboard
-Streamlit web application
+app/app.py
+==========
+Streamlit dashboard for the COVID-19 Pakistan analysis.
+
+The dashboard reads the cleaned data and the trained model from the project folders,
+so it always shows the same numbers as the notebook and the reports.
+
+Run locally with:  streamlit run app/app.py
 """
+from __future__ import annotations
 
-import streamlit as st
-import pandas as pd
-import numpy as np
-import matplotlib.pyplot as plt
-import seaborn as sns
-import pickle
+import json
 import os
+import pickle
 import warnings
-from statsmodels.tsa.arima.model import ARIMA
 
-warnings.filterwarnings('ignore')
+import numpy as np
+import pandas as pd
+import plotly.express as px
+import plotly.graph_objects as go
+import streamlit as st
 
-# ==========================================
-# PAGE CONFIG
-# ==========================================
-st.set_page_config(
-    page_title="COVID-19 Pakistan Dashboard",
-    page_icon="🦠",
-    layout="wide",
-    initial_sidebar_state="expanded"
-)
+warnings.filterwarnings("ignore")
 
-# ==========================================
-# PATHS (Auto-detect for both local & cloud)
-# ==========================================
-# app.py is at: <project_root>/app/app.py
-# Project root is one level up from app/
-BASE_PATH = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-DATA_PATH = os.path.join(BASE_PATH, 'data', 'processed')
-MODELS_PATH = os.path.join(BASE_PATH, 'models')
+BASE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+DATA = os.path.join(BASE, "data", "processed")
+MODELS = os.path.join(BASE, "models")
 
-# ==========================================
-# LOAD DATA
-# ==========================================
+st.set_page_config(page_title="COVID-19 Pakistan | Dashboard",
+                   page_icon="🦠", layout="wide",
+                   initial_sidebar_state="expanded")
+
+ACCENT = "#2E75B6"
+WARN = "#BF8F00"
+GOOD = "#375623"
+
+
+# --------------------------------------------------------------------- loaders
 @st.cache_data
-def load_data():
-    df = pd.read_csv(os.path.join(DATA_PATH, 'PK_COVID_19_cleaned.csv'))
-    df['Date'] = pd.to_datetime(df['Date'])
-    return df
+def load_frames():
+    clean = pd.read_csv(os.path.join(DATA, "PK_COVID_19_cleaned.csv"), parse_dates=["Date"])
+    daily = pd.read_csv(os.path.join(DATA, "daily_features.csv"), parse_dates=["Date"])
+    prov = pd.read_csv(os.path.join(DATA, "province_summary.csv"))
+    city = pd.read_csv(os.path.join(DATA, "city_summary.csv"))
+    travel = pd.read_csv(os.path.join(DATA, "travel_summary.csv"))
+    return clean, daily, prov, city, travel
+
 
 @st.cache_resource
-def load_model():
-    with open(os.path.join(MODELS_PATH, 'covid_cases_model.pkl'), 'rb') as f:
+def load_artifacts():
+    with open(os.path.join(MODELS, "covid_cases_model.pkl"), "rb") as f:
         model = pickle.load(f)
-    with open(os.path.join(MODELS_PATH, 'province_encoder.pkl'), 'rb') as f:
-        encoder = pickle.load(f)
-    with open(os.path.join(MODELS_PATH, 'model_features.pkl'), 'rb') as f:
+    with open(os.path.join(MODELS, "model_features.pkl"), "rb") as f:
         features = pickle.load(f)
-    return model, encoder, features
+    meta = {}
+    meta_path = os.path.join(MODELS, "model_metadata.json")
+    if os.path.exists(meta_path):
+        with open(meta_path, encoding="utf-8") as f:
+            meta = json.load(f)
+    forecast = None
+    fc_path = os.path.join(BASE, "outputs", "arima_forecast_30d.csv")
+    if os.path.exists(fc_path):
+        forecast = pd.read_csv(fc_path, parse_dates=["Date"])
+    return model, features, meta, forecast
 
-df = load_data()
-model, encoder, features = load_model()
 
-# ==========================================
-# HEADER
-# ==========================================
-st.title("🦠 COVID-19 Pakistan Dashboard")
-st.markdown("**Interactive Analysis | Feb 26 - Jun 3, 2020**")
-st.markdown("---")
+clean, daily, prov, city, travel = load_frames()
+model, features, meta, arima_fc = load_artifacts()
 
-# ==========================================
-# SIDEBAR FILTERS
-# ==========================================
-st.sidebar.header("🔍 Filters")
-
-min_date = df['Date'].min().date()
-max_date = df['Date'].max().date()
-
-date_range = st.sidebar.date_input(
-    "Date Range",
-    value=(min_date, max_date),
-    min_value=min_date,
-    max_value=max_date
+# ----------------------------------------------------------------------- header
+st.title("🦠 COVID-19 Pakistan — interactive analysis")
+st.caption(
+    f"{len(clean):,} cleaned records · {clean['Date'].min():%d %b %Y} – "
+    f"{clean['Date'].max():%d %b %Y} · {clean['Province'].nunique()} provinces · "
+    f"{clean['City'].nunique()} cities"
 )
 
-provinces = ['All'] + sorted(df['Province'].unique().tolist())
-selected_province = st.sidebar.selectbox("Select Province", provinces)
+# ----------------------------------------------------------------------- sidebar
+st.sidebar.header("Filters")
+dmin, dmax = clean["Date"].min().date(), clean["Date"].max().date()
+date_range = st.sidebar.date_input("Date range", value=(dmin, dmax),
+                                   min_value=dmin, max_value=dmax)
+province_sel = st.sidebar.multiselect("Province", sorted(clean["Province"].unique()))
+travel_sel = st.sidebar.multiselect("Exposure source", sorted(clean["Travel_history"].unique()))
 
-travel_histories = ['All'] + sorted(df['Travel_history'].unique().tolist())
-selected_travel = st.sidebar.selectbox("Select Travel History", travel_histories)
+mask = (clean["Date"].dt.date >= date_range[0]) & (clean["Date"].dt.date <= date_range[1])
+view = clean[mask]
+if province_sel:
+    view = view[view["Province"].isin(province_sel)]
+if travel_sel:
+    view = view[view["Travel_history"].isin(travel_sel)]
 
-# ==========================================
-# FILTER DATA
-# ==========================================
-filtered_df = df.copy()
+# -------------------------------------------------------------------------- KPIs
+c1, c2, c3, c4, c5 = st.columns(5)
+tc, td = int(view["Cases"].sum()), int(view["Deaths"].sum())
+tr = int(view["Recovered"].sum())
+c1.metric("Total cases", f"{tc:,}")
+c2.metric("Deaths", f"{td:,}")
+c3.metric("Recovered", f"{tr:,}")
+c4.metric("Case fatality", f"{(td / tc * 100 if tc else 0):.2f}%")
+c5.metric("Active", f"{tc - td - tr:,}")
 
-if len(date_range) == 2:
-    start_date, end_date = date_range
-    filtered_df = filtered_df[
-        (filtered_df['Date'].dt.date >= start_date) &
-        (filtered_df['Date'].dt.date <= end_date)
-    ]
+st.divider()
 
-if selected_province != 'All':
-    filtered_df = filtered_df[filtered_df['Province'] == selected_province]
-
-if selected_travel != 'All':
-    filtered_df = filtered_df[filtered_df['Travel_history'] == selected_travel]
-
-# ==========================================
-# KPI CARDS
-# ==========================================
-st.subheader("📊 Key Metrics")
-
-col1, col2, col3, col4 = st.columns(4)
-
-total_cases = filtered_df['Cases'].sum()
-total_deaths = filtered_df['Deaths'].sum()
-total_recovered = filtered_df['Recovered'].sum()
-active_cases = total_cases - total_deaths - total_recovered
-
-col1.metric("Total Cases", f"{total_cases:,}",
-            delta=f"{filtered_df['Cases'].mean():.1f} avg/day")
-col2.metric("Total Deaths", f"{total_deaths:,}",
-            delta=f"{(total_deaths/total_cases*100 if total_cases>0 else 0):.2f}% CFR")
-col3.metric("Total Recovered", f"{total_recovered:,}",
-            delta=f"{(total_recovered/total_cases*100 if total_cases>0 else 0):.2f}% rate")
-col4.metric("Active Cases", f"{active_cases:,}")
-
-st.markdown("---")
-
-# ==========================================
-# TIME SERIES CHART
-# ==========================================
-st.subheader("📈 Daily Trend")
-
-daily = filtered_df.groupby('Date')[['Cases', 'Deaths', 'Recovered']].sum().reset_index()
-
-fig, ax = plt.subplots(figsize=(14, 5))
-ax.plot(daily['Date'], daily['Cases'], color='steelblue', label='Cases', linewidth=1.5)
-ax.plot(daily['Date'], daily['Deaths'], color='crimson', label='Deaths', linewidth=1.5)
-ax.plot(daily['Date'], daily['Recovered'], color='green', label='Recovered', linewidth=1.5)
-ax.set_xlabel('Date')
-ax.set_ylabel('Count')
-ax.legend()
-ax.grid(alpha=0.3)
-plt.tight_layout()
-st.pyplot(fig)
-
-st.markdown("---")
-
-# ==========================================
-# PROVINCE & TRAVEL
-# ==========================================
-col1, col2 = st.columns(2)
-
-with col1:
-    st.subheader("🗺️ Cases by Province")
-    province_cases = filtered_df.groupby('Province')['Cases'].sum().sort_values(ascending=True)
-
-    fig, ax = plt.subplots(figsize=(8, 6))
-    ax.barh(province_cases.index, province_cases.values, color='steelblue', edgecolor='black')
-    ax.set_xlabel('Total Cases')
-    plt.tight_layout()
-    st.pyplot(fig)
-
-with col2:
-    st.subheader("🛫 Cases by Travel History")
-    travel_cases = filtered_df.groupby('Travel_history')['Cases'].sum().sort_values(ascending=False).head(8)
-
-    fig, ax = plt.subplots(figsize=(8, 6))
-    ax.pie(travel_cases.values, labels=travel_cases.index, autopct='%1.1f%%', startangle=90)
-    plt.tight_layout()
-    st.pyplot(fig)
-
-st.markdown("---")
-
-# ==========================================
-# DISTRIBUTION
-# ==========================================
-st.subheader("📊 Distribution Analysis")
-
-col1, col2 = st.columns(2)
-
-with col1:
-    fig, ax = plt.subplots(figsize=(8, 5))
-    ax.hist(filtered_df['Cases'], bins=50, color='steelblue', edgecolor='black', alpha=0.7)
-    ax.axvline(filtered_df['Cases'].mean(), color='red', linestyle='--',
-               label=f'Mean = {filtered_df["Cases"].mean():.1f}')
-    ax.axvline(filtered_df['Cases'].median(), color='green', linestyle='--',
-               label=f'Median = {filtered_df["Cases"].median():.1f}')
-    ax.set_xlabel('Cases')
-    ax.set_ylabel('Frequency')
-    ax.legend()
-    plt.tight_layout()
-    st.pyplot(fig)
-
-with col2:
-    fig, ax = plt.subplots(figsize=(8, 5))
-    sns.boxplot(x='Province', y='Cases', data=filtered_df, ax=ax)
-    ax.tick_params(axis='x', rotation=45)
-    plt.tight_layout()
-    st.pyplot(fig)
-
-st.markdown("---")
-
-# ==========================================
-# ML PREDICTION
-# ==========================================
-st.subheader("🤖 Predict Cases (Machine Learning)")
-st.markdown("Neeche input dein aur model se prediction lein:")
-
-col1, col2, col3 = st.columns(3)
-
-with col1:
-    input_deaths = st.number_input("Deaths", min_value=0, max_value=100, value=5)
-    input_recovered = st.number_input("Recovered", min_value=0, max_value=2000, value=50)
-
-with col2:
-    input_local = st.selectbox("Is Local Transmission?", [0, 1],
-                                format_func=lambda x: "Yes" if x == 1 else "No")
-    input_tableeghi = st.selectbox("Is Tableeghi Jamaat?", [0, 1],
-                                    format_func=lambda x: "Yes" if x == 1 else "No")
-
-with col3:
-    input_month = st.slider("Month", 1, 12, 6)
-    input_dayofweek = st.slider("Day of Week (0=Mon)", 0, 6, 2)
-
-selected_pred_province = st.selectbox("Province", sorted(df['Province'].unique()))
-
-if st.button("🔮 Predict Cases", type="primary"):
-    province_encoded = encoder.transform([selected_pred_province])[0]
-
-    input_data = pd.DataFrame({
-        'Deaths': [input_deaths],
-        'Recovered': [input_recovered],
-        'Is_Local': [input_local],
-        'Is_Tableeghi': [input_tableeghi],
-        'Month': [input_month],
-        'DayOfWeek': [input_dayofweek],
-        'Province_Encoded': [province_encoded]
-    })
-
-    prediction = model.predict(input_data)[0]
-
-    st.success(f"### 📊 Predicted Cases: **{prediction:.0f}**")
-    st.info(f"📍 Province: {selected_pred_province}")
-
-st.markdown("---")
-
-# ==========================================
-# ARIMA FORECAST SECTION
-# ==========================================
-st.subheader("📈 30-Day ARIMA Forecast")
-
-@st.cache_data
-def load_forecast():
-    daily_ts = df.groupby('Date')[['Cases']].sum().reset_index()
-    daily_ts = daily_ts.set_index('Date')
-    daily_ts = daily_ts.asfreq('D').ffill()
-
-    model_arima = ARIMA(daily_ts['Cases'], order=(7, 1, 1)).fit()
-    forecast = model_arima.get_forecast(steps=30)
-
-    forecast_mean = forecast.predicted_mean
-    forecast_ci = forecast.conf_int(alpha=0.05)
-
-    last_date = daily_ts.index.max()
-    future_dates = pd.date_range(start=last_date + pd.Timedelta(days=1),
-                                  periods=30, freq='D')
-
-    forecast_df = pd.DataFrame({
-        'Date': future_dates,
-        'Forecast': forecast_mean.values.clip(min=0),
-        'Lower_CI': forecast_ci.iloc[:, 0].values.clip(min=0),
-        'Upper_CI': forecast_ci.iloc[:, 1].values.clip(min=0)
-    })
-
-    return daily_ts, forecast_df
-
-daily_ts, forecast_data = load_forecast()
-
-# Forecast chart
-fig, ax = plt.subplots(figsize=(14, 5))
-ax.plot(daily_ts.index, daily_ts['Cases'], color='steelblue',
-        label='Historical', linewidth=1.5)
-ax.plot(forecast_data['Date'], forecast_data['Forecast'],
-        color='red', label='30-Day Forecast', linewidth=2, linestyle='--')
-ax.fill_between(forecast_data['Date'],
-                forecast_data['Lower_CI'],
-                forecast_data['Upper_CI'],
-                color='red', alpha=0.2, label='95% Confidence Interval')
-ax.axvline(x=daily_ts.index.max(), color='gray', linestyle=':', linewidth=2,
-           label='Forecast Start')
-
-ax.set_xlabel('Date')
-ax.set_ylabel('Daily Cases')
-ax.set_title('COVID-19 Pakistan: 30-Day Forecast (ARIMA)', fontsize=14)
-ax.legend(loc='upper left')
-ax.grid(alpha=0.3)
-plt.tight_layout()
-st.pyplot(fig)
-
-# Forecast summary
-col1, col2, col3 = st.columns(3)
-col1.metric("Total Predicted (30d)", f"{forecast_data['Forecast'].sum():,.0f}")
-col2.metric("Avg Daily Cases", f"{forecast_data['Forecast'].mean():,.0f}")
-col3.metric("Peak Predicted Day", f"{forecast_data['Forecast'].max():,.0f}")
-
-st.markdown("---")
-
-# ==========================================
-# FOOTER
-# ==========================================
-st.markdown(
-    """
-    <div style='text-align: center; color: gray; padding: 20px;'>
-        <p>Made with ❤️ using Streamlit | Data: Feb 26 - Jun 3, 2020</p>
-    </div>
-    """,
-    unsafe_allow_html=True
+# ---------------------------------------------------------------------- tabs
+tab_trend, tab_geo, tab_source, tab_model, tab_data = st.tabs(
+    ["📈 Trend", "🗺️ Geography", "🦠 Exposure source", "🤖 Model", "📋 Data"]
 )
+
+# ------------------------------------------------------------------ trend tab
+with tab_trend:
+    agg = (view.groupby("Date")
+               .agg(Cases=("Cases", "sum"), Deaths=("Deaths", "sum"),
+                    Recovered=("Recovered", "sum"))
+               .reset_index().sort_values("Date"))
+    agg["MA7"] = agg["Cases"].rolling(7, min_periods=1).mean()
+    fig = go.Figure()
+    fig.add_trace(go.Bar(x=agg["Date"], y=agg["Cases"], name="daily cases",
+                         marker_color=ACCENT, opacity=.55))
+    fig.add_trace(go.Scatter(x=agg["Date"], y=agg["MA7"], name="7-day average",
+                             line=dict(color=WARN, width=3)))
+    fig.update_layout(title="Daily cases with 7-day moving average",
+                      template="plotly_white", height=430,
+                      legend=dict(orientation="h", y=1.02), margin=dict(t=60))
+    st.plotly_chart(fig, use_container_width=True)
+
+    l, r = st.columns(2)
+    with l:
+        f2 = go.Figure()
+        f2.add_trace(go.Scatter(x=agg["Date"], y=agg["Deaths"], name="deaths",
+                                fill="tozeroy", line=dict(color=WARN)))
+        f2.update_layout(title="Daily deaths", template="plotly_white", height=330)
+        st.plotly_chart(f2, use_container_width=True)
+    with r:
+        cum = agg.assign(Cum=agg["Cases"].cumsum())
+        f3 = go.Figure(go.Scatter(x=cum["Date"], y=cum["Cum"], fill="tozeroy",
+                                  line=dict(color=ACCENT), name="cumulative"))
+        f3.update_layout(title="Cumulative cases", template="plotly_white", height=330)
+        st.plotly_chart(f3, use_container_width=True)
+
+# ------------------------------------------------------------------- geo tab
+with tab_geo:
+    p = (view.groupby("Province")
+             .agg(Cases=("Cases", "sum"), Deaths=("Deaths", "sum"),
+                  Recovered=("Recovered", "sum")).reset_index())
+    p["CFR"] = np.where(p["Cases"] > 0, p["Deaths"] / p["Cases"] * 100, 0).round(2)
+    c = (view.groupby(["City", "Province"])
+             .agg(Cases=("Cases", "sum")).reset_index()
+             .sort_values("Cases", ascending=False).head(20))
+
+    l, r = st.columns(2)
+    with l:
+        f = px.bar(p.sort_values("Cases"), x="Cases", y="Province", orientation="h",
+                   color="CFR", color_continuous_scale="YlOrRd",
+                   title="Cases by province (colour = CFR)")
+        f.update_layout(template="plotly_white", height=420)
+        st.plotly_chart(f, use_container_width=True)
+    with r:
+        f = px.bar(c.sort_values("Cases"), x="Cases", y="City", orientation="h",
+                   color="Province", title="Top 20 cities")
+        f.update_layout(template="plotly_white", height=520)
+        st.plotly_chart(f, use_container_width=True)
+
+    f = px.treemap(view, path=["Province", "City"], values="Cases",
+                   title="Case load by province and city")
+    f.update_layout(template="plotly_white", height=520)
+    st.plotly_chart(f, use_container_width=True)
+
+# ---------------------------------------------------------------- source tab
+with tab_source:
+    t = (view.groupby("Travel_history")
+             .agg(Cases=("Cases", "sum"), Deaths=("Deaths", "sum"),
+                  Records=("Cases", "size")).reset_index())
+    t["CFR"] = np.where(t["Cases"] > 0, t["Deaths"] / t["Cases"] * 100, 0).round(2)
+    t = t.sort_values("Cases", ascending=False)
+
+    l, r = st.columns(2)
+    with l:
+        f = px.pie(t.head(8), values="Cases", names="Travel_history",
+                   title="Case share by exposure source", hole=.45)
+        f.update_layout(template="plotly_white", height=420)
+        st.plotly_chart(f, use_container_width=True)
+    with r:
+        f = px.bar(t, x="Cases", y="Travel_history", orientation="h", color="CFR",
+                   color_continuous_scale="YlOrRd", title="Cases and CFR by source")
+        f.update_layout(template="plotly_white", height=420)
+        st.plotly_chart(f, use_container_width=True)
+
+    st.info(
+        "**Reading the 'Unknown' slice.** 36 source rows had a blank Travel_history. "
+        f"They carry {int(clean.loc[clean['Travel_history'] == 'Unknown', 'Cases'].sum()):,} cases, "
+        "so 'Unknown' is a reporting gap, not a transmission category."
+    )
+
+# ----------------------------------------------------------------- model tab
+with tab_model:
+    st.subheader("Forecasting models")
+    if meta:
+        st.caption(
+            f"Best learner: **{meta.get('best_model')}** · split: {meta.get('split')} · "
+            f"tuning: {meta.get('tuning')}"
+        )
+        res = pd.DataFrame(meta.get("results", {})).T.reset_index()
+        res = res.rename(columns={"index": "model"})
+        st.dataframe(res, use_container_width=True, hide_index=True)
+
+        st.markdown(
+            "**Why there is no impressive R² here.** The predictors are all lagged, and the "
+            "split is chronological, so the score reflects genuine out-of-sample skill. "
+            "On only 62 training days 'tomorrow = today' is a very strong benchmark, and "
+            "adding time trends does not beat it. The earlier 0.75 R² came from using "
+            "same-day deaths and recoveries plus a random split."
+        )
+
+    if arima_fc is not None:
+        st.subheader("30-day ARIMA projection")
+        hist = daily.tail(45)
+        f = go.Figure()
+        f.add_trace(go.Scatter(x=hist["Date"], y=hist["Cases"], name="observed",
+                               line=dict(color=ACCENT)))
+        f.add_trace(go.Scatter(x=arima_fc["Date"], y=arima_fc["Forecast"],
+                               name="forecast", line=dict(color=WARN, width=3)))
+        f.add_trace(go.Scatter(x=arima_fc["Date"], y=arima_fc["Upper_95"],
+                               line=dict(width=0), showlegend=False))
+        f.add_trace(go.Scatter(x=arima_fc["Date"], y=arima_fc["Lower_95"],
+                               fill="tonexty", line=dict(width=0),
+                               fillcolor="rgba(191,143,0,.18)", name="95% interval"))
+        f.update_layout(template="plotly_white", height=430,
+                        title="ARIMA forecast with a 95% interval")
+        st.plotly_chart(f, use_container_width=True)
+
+    st.subheader("What-if scenario")
+    st.write("Set the last few days of history and the dashboard rebuilds the lag features "
+             "and asks the trained model for the next day.")
+    a, b, c = st.columns(3)
+    lag1 = a.number_input("Cases yesterday", min_value=0, value=int(daily['Cases'].iloc[-1]))
+    lag3 = b.number_input("Cases 3 days ago", min_value=0, value=int(daily['Cases'].iloc[-3]))
+    lag7 = c.number_input("Cases 7 days ago", min_value=0, value=int(daily['Cases'].iloc[-7]))
+    if st.button("Predict tomorrow"):
+        recent = daily["Cases"].tail(14).values
+        row = {
+            "Lag_Cases_1": lag1, "Lag_Cases_3": lag3, "Lag_Cases_7": lag7,
+            "Lag_Deaths_1": daily["Deaths"].iloc[-1],
+            "Lag_Recovered_1": daily["Recovered"].iloc[-1],
+            "Roll_Mean_7": float(np.mean(recent[-7:])),
+            "Roll_Mean_14": float(np.mean(recent)),
+            "Roll_Std_7": float(np.std(recent[-7:], ddof=1)),
+            "Roll_Max_14": float(np.max(recent)),
+            "Cumul_Cases_Lag": float(daily["Cases"].sum()),
+            "DayOfWeek_Num": int(daily["Date"].iloc[-1].dayofweek + 1) % 7,
+            "Month": int(daily["Date"].iloc[-1].month),
+            "CFR_Lag_1": float(daily["Deaths"].sum() / daily["Cases"].sum() * 100),
+            "Growth_Lag_1": float(daily["Cases"].pct_change().iloc[-1] * 100),
+        }
+        X = pd.DataFrame([row])[features]
+        pred = float(model.predict(X)[0])
+        st.success(f"Predicted cases for the next day: **{pred:,.0f}**  "
+                   f"(naive 'tomorrow = today' would say {lag1:,})")
+
+# ------------------------------------------------------------------ data tab
+with tab_data:
+    st.write(f"Filtered rows: **{len(view):,}**")
+    show = ["Date", "Province", "City", "Travel_history", "Cases", "Deaths", "Recovered"]
+    st.dataframe(view[show].sort_values(["Date", "Province"]).head(2000),
+                 use_container_width=True, hide_index=True)
+    st.download_button("Download filtered CSV",
+                       view[show].to_csv(index=False).encode("utf-8"),
+                       "covid19_filtered.csv", "text/csv")
+
+st.divider()
+st.caption("Data: Pakistan COVID-19 tracking, 26 Feb – 03 Jun 2020 · "
+           "Built with pandas, scikit-learn, statsmodels and Plotly.")

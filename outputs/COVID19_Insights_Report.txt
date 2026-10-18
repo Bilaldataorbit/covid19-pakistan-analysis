@@ -1,63 +1,120 @@
+==============================================================================
+COVID-19 PAKISTAN - INSIGHTS REPORT
+==============================================================================
 
-============================================================
-PAKISTAN COVID-19 ANALYSIS REPORT
-Generated: 2026-10-09 09:42
-============================================================
+DATASET
+------------------------------------------------------------------------------
+  Raw rows                 : 2,798
+  Rows after de-duplication: 2,796
+  Final analytical rows    : 2,711
+  Date range               : 2020-02-26 to 2020-06-03
+  Provinces                : 8
+  Cities (normalised)      : 117  (from 129 raw spellings)
 
-1. OVERVIEW
-------------------------------------------------------------
-Date Range:     Feb 26, 2020 to Jun 03, 2020
-Total Records:  2,798
-Provinces:      8
-Cities:         125
+HEADLINE NUMBERS
+------------------------------------------------------------------------------
+  Total cases      : 83,985
+  Total deaths     : 1,728
+  Total recovered  : 24,753
+  Active cases     : 57,504
+  Case fatality %  : 2.06
+  Recovery rate %  : 29.47
 
-2. KEY METRICS
-------------------------------------------------------------
-Total Cases:        83,986
-Total Deaths:       1,728
-Total Recovered:    24,754
-Active Cases:       57,504
+DATA QUALITY
+------------------------------------------------------------------------------
+  Exact duplicates removed : 2
+  City spellings merged    : 12
+  Rows with blank travel   : 36
+  Cases in those rows      : 19,200  (22.86% of all cases)
+  These rows were labelled 'Unknown'. They are the single largest
+  reporting gap in the dataset and they are concentrated in Punjab
+  (Lahore) and Balochistan, so 'Unknown' should be read as 'not stated',
+  not as a transmission category.
 
-National CFR:       2.06%
-Recovery Rate:      29.47%
+PROVINCES
+------------------------------------------------------------------------------
+  Sindh                              cases=   32,858  deaths=   546  CFR= 1.66%  share=39.12%
+  Punjab                             cases=   31,096  deaths=   593  CFR= 1.91%  share=37.03%
+  Khyber Pakhtunkhwa                 cases=   10,259  deaths=   473  CFR= 4.61%  share=12.22%
+  Balochistan                        cases=    5,125  deaths=    49  CFR= 0.96%  share= 6.10%
+  Islamabad Capital Territory        cases=    3,523  deaths=    36  CFR= 1.02%  share= 4.19%
+  Gilgit-Baltistan                   cases=      786  deaths=    24  CFR= 3.05%  share= 0.94%
+  Azad Jammu Kashmir                 cases=      285  deaths=     6  CFR= 2.11%  share= 0.34%
+  Federally Administered Tribal Areas cases=       53  deaths=     1  CFR= 1.89%  share= 0.06%
 
-3. TOP 3 PROVINCES (by Cases)
-------------------------------------------------------------
-1. Sindh: 32,858 cases (39.1%)
-2. Punjab: 31,096 cases (37.0%)
-3. Khyber Pakhtunkhwa: 10,259 cases (12.2%)
+TOP 10 CITIES
+------------------------------------------------------------------------------
+   1. Karachi            Sindh                        cases=   29,346  CFR= 1.70%
+   2. Lahore             Punjab                       cases=   28,015  CFR= 2.08%
+   3. Quetta             Balochistan                  cases=    5,109  CFR= 0.96%
+   4. Peshawar           Khyber Pakhtunkhwa           cases=    4,923  CFR= 5.38%
+   5. Islamabad          Islamabad Capital Territory  cases=    3,523  CFR= 1.02%
+   6. Swat               Khyber Pakhtunkhwa           cases=      958  CFR= 4.70%
+   7. Multan             Punjab                       cases=      712  CFR= 0.28%
+   8. Sukkur             Sindh                        cases=      681  CFR= 0.73%
+   9. Hyderabad          Sindh                        cases=      610  CFR= 1.80%
+  10. Raiwind            Punjab                       cases=      546  CFR= 0.18%
 
-4. TOP 5 CITIES (by Cases)
-------------------------------------------------------------
-1. Karachi (Sindh): 29,346 cases
-2. Lahore (Punjab): 28,015 cases
-3. Quetta (Baluchistan): 5,109 cases
-4. Peshawar (Khyber Pakhtunkhwa): 4,923 cases
-5. Islamabad (Islamabad Capital Territory): 3,523 cases
+EXPOSURE SOURCE
+------------------------------------------------------------------------------
+  Local - Social Contact     cases=   58,918  share=70.15%  records= 2413
+  Unknown                    cases=   22,659  share=26.98%  records=  158
+  Tableeghi Jamaat           cases=    1,115  share= 1.33%  records=   23
+  Iran / Taftan              cases=    1,053  share= 1.25%  records=   88
+  Jail                       cases=      107  share= 0.13%  records=    5
+  Afghanistan                cases=       70  share= 0.08%  records=    5
+  International Passenger    cases=       38  share= 0.05%  records=    5
+  Syria                      cases=        7  share= 0.01%  records=    2
 
-5. TRAVEL HISTORY INSIGHTS
-------------------------------------------------------------
-Local - Social Contact: 58,919 cases (2499 records)
-Unknown: 22,659 cases (159 records)
-Tableeghi Jamaat: 1,115 cases (23 records)
-Iran/Taftan: 1,053 cases (88 records)
-Jail: 107 cases (5 records)
+DAILY SERIES
+------------------------------------------------------------------------------
+  Days covered        : 99 calendar days (9 with zero new cases)
+  Mean daily cases    : 848.3
+  Median daily cases  : 512
+  Peak day            : 2020-06-03 with 4,677 cases
+  Last 7-day average  : 3374.0
 
-6. STATISTICAL FINDINGS
-------------------------------------------------------------
-Avg Daily Cases:        923
-Avg Daily Deaths:       19
-Max Daily Cases:        4,677 on Jun 03, 2020
-Max Daily Deaths:       88 on May 30, 2020
+MACHINE LEARNING (chronological hold-out, lagged features only)
+------------------------------------------------------------------------------
+  Every predictor is lagged by at least one day, so no same-day
+  information leaks into the target.
 
-Cases vs Deaths Correlation:     0.930
-Cases vs Recovered Correlation:  0.787
+  model                          R2     RMSE      MAE    MAPE%
+  Linear Regression         -12.065   3339.1   2738.7    124.4
+  Ridge Regression           -0.500   1131.3    884.4     34.4
+  Random Forest              -0.358   1076.5    718.9     25.0
+  Gradient Boosting          -0.264   1038.7    720.1     26.3
+  Naive (tomorrow = today)    0.779    434.1    347.2     15.3
 
-7. PEAK ANALYSIS
-------------------------------------------------------------
-Peak Cases Day:   Jun 03, 2020 (4,677 cases)
-Peak Deaths Day:  May 30, 2020 (88 deaths)
+  Best learner: Gradient Boosting
+  Naive benchmark RMSE: 434.1
+  The tuned model does NOT beat the naive benchmark on the hold-out.
+  This is the honest result: with 62 training days and a steeply rising
+  curve, lag-1 is a very strong predictor and the extra features add
+  noise rather than signal. The earlier R2 of 0.75 came from using
+  same-row Deaths/Recovered and a random split, which is leakage.
 
-============================================================
-END OF REPORT
-============================================================
+ARIMA FORECAST
+------------------------------------------------------------------------------
+  Selected order     : ARIMA(7, 2, 1)   (AIC=1048.6, BIC=1069.6)
+  Hold-out MAE       : 644.5
+  Hold-out RMSE      : 768.6
+  Hold-out MAPE      : 32.6%
+  Naive hold-out MAE : 347.2
+  Seasonal naive MAE : 860.8
+
+  30-day forecast total : 247,996 cases
+  Mean daily            : 8,267
+  Peak day              : 11,553 on 2020-07-03
+  Minimum day           : 4,842
+
+READING NOTES
+------------------------------------------------------------------------------
+  * CFR and recovery rate are cumulative ratios; they are unstable in the
+    first weeks when the denominator is tiny.
+  * Recovered is under-reported, so the recovery rate is a lower bound.
+  * Exposure source and province are correlated, so provincial CFR
+    differences are not a clean measure of care quality.
+  * Forecasts are scenario envelopes, not predictions.
+
+==============================================================================

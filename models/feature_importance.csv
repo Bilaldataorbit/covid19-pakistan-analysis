@@ -1,0 +1,15 @@
+Feature,Importance,Kind
+Lag_Cases_7,0.21307695480085848,impurity importance
+CFR_Lag_1,0.1608669710557371,impurity importance
+Roll_Mean_14,0.14000235317016843,impurity importance
+Cumul_Cases_Lag,0.11463240052159203,impurity importance
+Month,0.07919854404145728,impurity importance
+Lag_Cases_1,0.06791804653688005,impurity importance
+Roll_Max_14,0.05885977844649753,impurity importance
+Lag_Deaths_1,0.055614991385822835,impurity importance
+Lag_Cases_3,0.04423059777496636,impurity importance
+Growth_Lag_1,0.02264710023809504,impurity importance
+Lag_Recovered_1,0.014975586988447313,impurity importance
+Roll_Mean_7,0.013355223251034875,impurity importance
+Roll_Std_7,0.011269863260674487,impurity importance
+DayOfWeek_Num,0.003351588527768272,impurity importance

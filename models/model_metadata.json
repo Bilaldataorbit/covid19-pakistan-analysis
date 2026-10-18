@@ -1,0 +1,94 @@
+{
+  "best_model": "Gradient Boosting",
+  "features": [
+    "Lag_Cases_1",
+    "Lag_Cases_3",
+    "Lag_Cases_7",
+    "Lag_Deaths_1",
+    "Lag_Recovered_1",
+    "Roll_Mean_7",
+    "Roll_Mean_14",
+    "Roll_Std_7",
+    "Roll_Max_14",
+    "Cumul_Cases_Lag",
+    "DayOfWeek_Num",
+    "Month",
+    "CFR_Lag_1",
+    "Growth_Lag_1"
+  ],
+  "target": "Cases",
+  "test_days": 21,
+  "split": "chronological (final 21 rows held out)",
+  "tuning": "GridSearchCV with TimeSeriesSplit(4)",
+  "results": {
+    "Linear Regression": {
+      "R2": -12.064802482004502,
+      "RMSE": 3339.124125987942,
+      "MAE": 2738.650962865298,
+      "MAPE": 124.40123969161434,
+      "CV_RMSE": NaN
+    },
+    "Ridge Regression": {
+      "R2": -0.4997068378676137,
+      "RMSE": 1131.3170310963883,
+      "MAE": 884.410775258477,
+      "MAPE": 34.40595272043001,
+      "CV_RMSE": 258.67400303320034
+    },
+    "Random Forest": {
+      "R2": -0.357776198421931,
+      "RMSE": 1076.4534028510504,
+      "MAE": 718.9333616780046,
+      "MAPE": 25.00000060642958,
+      "CV_RMSE": 393.0199134704974
+    },
+    "Gradient Boosting": {
+      "R2": -0.2643156556616917,
+      "RMSE": 1038.744882473999,
+      "MAE": 720.1353714760461,
+      "MAPE": 26.33193837310156,
+      "CV_RMSE": 402.6880983599957
+    },
+    "Naive (tomorrow = today)": {
+      "R2": 0.7792165695621619,
+      "RMSE": 434.0746040771815,
+      "MAE": 347.23809523809524,
+      "MAPE": 15.273918865897954
+    }
+  },
+  "best_params": {
+    "Linear Regression": {},
+    "Ridge Regression": {
+      "model__alpha": 10.0
+    },
+    "Random Forest": {
+      "max_depth": 6,
+      "max_features": "sqrt",
+      "min_samples_leaf": 1,
+      "n_estimators": 200
+    },
+    "Gradient Boosting": {
+      "learning_rate": 0.05,
+      "max_depth": 2,
+      "n_estimators": 150,
+      "subsample": 0.8
+    },
+    "Naive (tomorrow = today)": {}
+  },
+  "cleaning_report": {
+    "raw_rows": 2798,
+    "after_exact_dupes": 2796,
+    "after_city_norm_groups": 2711,
+    "final_rows": 2711,
+    "cities_raw": 129,
+    "cities_final": 117,
+    "provinces_raw": 10,
+    "provinces_final": 8,
+    "missing_travel_rows": 36,
+    "missing_travel_cases": 19200,
+    "total_cases": 83985,
+    "total_deaths": 1728,
+    "total_recovered": 24753
+  },
+  "leakage_note": "All predictors are lagged by at least one day, so no same-row information reaches the target."
+}

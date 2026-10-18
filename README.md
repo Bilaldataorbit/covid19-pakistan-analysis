@@ -1,385 +1,362 @@
-<div align="center">
+# 🦠 COVID-19 Pakistan — End-to-End Data Science Project
 
-# 🦠 COVID-19 Pakistan Analysis
+Exploratory analysis, statistical testing, leakage-free machine learning, ARIMA forecasting,
+a Streamlit dashboard and automated reports — all built on one cleaned dataset of
+Pakistan's COVID-19 records from **26 Feb 2020 to 03 Jun 2020**.
 
-### An end-to-end Data Science project combining exploratory analysis, machine learning, time-series forecasting, and interactive dashboards.
-
-[![Python](https://img.shields.io/badge/Python-3.14-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
-[![Streamlit](https://img.shields.io/badge/Streamlit-1.62-FF4B4B?style=for-the-badge&logo=streamlit&logoColor=white)](https://streamlit.io/)
-[![scikit-learn](https://img.shields.io/badge/scikit--learn-1.4-F7931E?style=for-the-badge&logo=scikit-learn&logoColor=white)](https://scikit-learn.org/)
-[![Pandas](https://img.shields.io/badge/Pandas-3.0-150458?style=for-the-badge&logo=pandas&logoColor=white)](https://pandas.pydata.org/)
-[![Plotly](https://img.shields.io/badge/Plotly-7.1-3F4F75?style=for-the-badge&logo=plotly&logoColor=white)](https://plotly.com/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow?style=for-the-badge)](https://opensource.org/licenses/MIT)
-[![Status](https://img.shields.io/badge/Status-Complete-success?style=for-the-badge)]()
-
-</div>
-
----
-
-## 📖 Table of Contents
-
-- [Project Overview](#-project-overview)
-- [Key Findings](#-key-findings)
-- [Live Demo](#-live-demo)
-- [Project Deliverables](#-project-deliverables)
-- [Visualizations Gallery](#-visualizations-gallery)
-- [Machine Learning Models](#-machine-learning-models)
-- [ARIMA Time Series Forecasting](#-arima-time-series-forecasting)
-- [Project Structure](#-project-structure)
-- [Tech Stack](#-tech-stack)
-- [Installation](#-installation)
-- [Usage](#-usage)
-- [Author](#-author)
-- [License](#-license)
+<p align="left">
+  <img alt="Python" src="https://img.shields.io/badge/Python-3.14-3776AB?logo=python&logoColor=white">
+  <img alt="pandas" src="https://img.shields.io/badge/pandas-3.0-150458?logo=pandas&logoColor=white">
+  <img alt="scikit-learn" src="https://img.shields.io/badge/scikit--learn-1.9-F7931E?logo=scikitlearn&logoColor=white">
+  <img alt="statsmodels" src="https://img.shields.io/badge/statsmodels-0.15-3F4F75">
+  <img alt="Streamlit" src="https://img.shields.io/badge/Streamlit-1.x-FF4B4B?logo=streamlit&logoColor=white">
+  <img alt="Plotly" src="https://img.shields.io/badge/Plotly-7.1-3F4F75?logo=plotly&logoColor=white">
+</p>
 
 ---
 
-## 🎯 Project Overview
+## Table of contents
 
-This project provides a **comprehensive analysis of COVID-19 data in Pakistan** from **February 26, 2020 to June 3, 2020**. It covers the entire data science pipeline: from raw data cleaning to machine learning models, time-series forecasting, interactive dashboards, and automated reporting.
-
-### ✨ Features
-
-- 📊 **Exploratory Data Analysis** — Deep dive into cases, deaths, and recoveries
-- 📈 **34+ Static Visualizations** — Histograms, scatter plots, pivot charts
-- 🌐 **6 Interactive Plotly Charts** — HTML files for web exploration
-- 🤖 **Machine Learning** — 3 regression models with hyperparameter tuning
-- 📉 **Time-Series Forecasting** — ARIMA + Linear trend forecasting
-- 🎨 **Streamlit Dashboard** — Live interactive web app
-- 📗 **Automated Reports** — Excel multi-sheet + TXT insights
-- 📁 **Professional Structure** — Clean, modular, and reproducible
+- [Project overview](#project-overview)
+- [Key findings](#key-findings)
+- [Data quality and what changed](#data-quality-and-what-changed)
+- [Machine learning](#machine-learning)
+- [ARIMA forecasting](#arima-forecasting)
+- [Project structure](#project-structure)
+- [Tech stack](#tech-stack)
+- [Installation](#installation)
+- [Usage](#usage)
+- [Limitations](#limitations)
+- [Author](#author)
 
 ---
 
-## 📊 Key Findings
+## Project overview
+
+This project takes the raw Pakistan COVID-19 feed and carries it through a full analytical
+pipeline:
+
+| Stage | What it does |
+|---|---|
+| **Cleaning** | De-duplicates records, normalises 129 city spellings to 117, flags blank exposure sources |
+| **EDA** | Daily / province / city / exposure-source analysis, 18 static figures, 6 interactive charts |
+| **Statistics** | Descriptive profile, correlation, chi-square, ANOVA, normality and non-parametric tests |
+| **Machine learning** | 4 regression learners with lagged features and a chronological split |
+| **Forecasting** | ARIMA with an AIC order search and a 21-day hold-out |
+| **Delivery** | Streamlit dashboard, Excel workbook, text insights report |
+
+The whole pipeline lives in `src/` and is reproducible end to end — see [Usage](#usage).
+
+---
+
+## Key findings
 
 | Metric | Value |
-|:-------|------:|
-| 📅 **Date Range** | Feb 26 – Jun 3, 2020 |
-| 📋 **Total Records** | 2,798 |
-| 🗺️ **Provinces Covered** | 8 |
-| 🏙️ **Cities Covered** | 125 |
-| 🦠 **Total Cases** | **83,986** |
-| 💀 **Total Deaths** | **1,728** |
-| 💚 **Total Recovered** | **24,754** |
-| ⚠️ **Case Fatality Rate** | **2.06%** |
-| ✅ **Recovery Rate** | **29.47%** |
+|---|---:|
+| Date range | 26 Feb – 03 Jun 2020 |
+| Cleaned records | **2,711** |
+| Provinces | 8 |
+| Cities (after normalisation) | **117** |
+| Total cases | **83,985** |
+| Total deaths | **1,728** |
+| Total recovered | **24,753** |
+| Case fatality rate | **2.06 %** |
+| Recovery rate | **29.47 %** |
+| Peak day | **4,677** cases on 03 Jun 2020 |
 
-### Top Provinces & Cities
+### Top provinces
 
-| Rank | Province | Cases |
-|:----:|:---------|------:|
-| 🥇 | Sindh | 32,858 |
-| 🥈 | Punjab | 31,096 |
-| 🥉 | Khyber Pakhtunkhwa | 10,259 |
+| Rank | Province | Cases | CFR |
+|:--:|---|---:|---:|
+| 1 | Sindh | 32,858 | 1.66 % |
+| 2 | Punjab | 31,096 | 1.91 % |
+| 3 | Khyber Pakhtunkhwa | 10,259 | 4.61 % |
+| 4 | Balochistan | 5,125 | 0.96 % |
+| 5 | Islamabad Capital Territory | 3,523 | 1.02 % |
 
-| Rank | City | Cases |
-|:----:|:-----|------:|
-| 🥇 | Karachi | ~30,000 |
-| 🥈 | Lahore | ~15,000 |
-| 🥉 | Peshawar | ~4,000 |
+Sindh and Punjab together carry **76 %** of all cases.
 
----
+### Top cities
 
-## 🌐 Live Demo
+| Rank | City | Province | Cases | CFR |
+|:--:|---|---|---:|---:|
+| 1 | Karachi | Sindh | **29,346** | 1.70 % |
+| 2 | Lahore | Punjab | **28,015** | 2.08 % |
+| 3 | Quetta | Balochistan | **5,109** | 0.96 % |
+| 4 | Peshawar | Khyber Pakhtunkhwa | 4,923 | 5.38 % |
+| 5 | Islamabad | Islamabad Capital Territory | 3,523 | 1.02 % |
 
-🚀 **Try the interactive dashboard here:**
+Karachi and Lahore alone account for **68 %** of national cases.
 
-👉 **[COVID-19 Pakistan Dashboard](https://covid19-pakistan-analysis-n43mjecpftd2atum26wylp.streamlit.app)**
+### Exposure source
 
-[![Open in Streamlit](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://covid19-pakistan-analysis-n43mjecpftd2atum26wylp.streamlit.app)
+| Source | Cases | Share |
+|---|---:|---:|
+| Local – Social Contact | 58,918 | 70.15 % |
+| Unknown | 22,659 | 26.98 % |
+| Tableeghi Jamaat | 1,115 | 1.33 % |
+| Iran / Taftan | 1,053 | 1.25 % |
 
-Features:
-- 🎛️ Filter by Province, Date Range, Travel History
-- 📊 Real-time KPIs (Cases, Deaths, Recovered, Active)
-- 📈 Dynamic charts that update on every filter change
-- 🤖 ML predictions for new scenarios
-- 📉 30-day ARIMA forecasts with confidence intervals
-
----
-
-## 📦 Project Deliverables
-
-### 📁 Data Analysis (Excel + Python)
-- ✅ Data cleaning and preprocessing (2,798 records)
-- ✅ Helper columns (Month, Week, Day, Active, CFR, Recovery Rate)
-- ✅ Descriptive statistics (Mean, Variance, Std Dev, Skewness, Kurtosis)
-- ✅ Correlation analysis with p-values
-- ✅ Hypothesis testing (T-test, ANOVA)
-
-### 📊 Visualizations (34 Static + 6 Interactive)
-| Category | Count | Files |
-|:---------|:------:|:------|
-| Histograms | 5 | `01`, `14`, `15`, `16`, `17` |
-| Box Plots | 3 | `02`, `07`, plus variation |
-| Scatter Plots | 7 | `18`, `19`, `20`, `21`, `22`, `23`, plus 1 |
-| Pivot Charts | 10 | `06`, `24`, `25`, `26`, `27`, `28`, `29`, `30`, `31`, plus 1 |
-| Time Series | 5 | `04`, `05`, `11`, `12`, `13` |
-| ML Results | 3 | `08`, `09`, `10` |
-| Dashboard | 1 | `32` |
-| Forecasting | 2 | `33`, `34` |
-| **Interactive HTML** | **6** | `01`-`06` in `/interactive` |
-
-### 🤖 Machine Learning Models
-- Linear Regression
-- Random Forest
-- Gradient Boosting (Best: R² = 0.75)
-- ARIMA(7,1,1) for time series
-
-### 📗 Automated Reports
-- **Excel Report** — 6 sheets (Clean Data, Daily, Province, City, Travel, Pivot)
-- **Insights Report** — Text summary with all key metrics
+> **Read "Unknown" carefully.** 36 source rows had a blank `Travel_history` and carry
+> **19,200 cases (22.9 % of the total)**, concentrated in Punjab (16,520) and Balochistan
+> (2,680). They are labelled `Unknown` so the category is a **reporting gap**, not a
+> transmission route. The remaining ~3,459 `Unknown` cases were explicitly recorded that way.
 
 ---
 
-## 📸 Visualizations Gallery
+## Data quality and what changed
 
-### 1. Master Dashboard (All-in-One)
-![Master Dashboard](outputs/figures/32_master_dashboard.png)
+The earlier version of this project shipped with several data problems. All of them were
+fixed, and the pipeline now documents them:
 
-### 2. Daily Trend Analysis
-![Daily Trend](outputs/figures/04_timeseries.png)
+| Issue | Before | After |
+|---|---|---|
+| Exact duplicate rows | 2 left in | removed (2,798 → 2,796) |
+| City spellings | `Tor Ghar` / `Torghar` / `Tor  Ghar`, `Mirpur Khas` / `Mirpurkhas`, `Jehlum`, `Kurrum`, `Tando Alahyar` all counted separately → **125–132 "cities"** | normalised to **117 real cities** |
+| Duplicate records on the analytical key | 85 groups summing different rows | collapsed by summing `Cases` / `Deaths` / `Recovered` → **2,711 rows** |
+| Blank `Travel_history` | silently filled with `Unknown`, not mentioned anywhere | flagged in the data (`Unknown`) **and explained** here and in the reports |
+| Missing calendar days | dropped, so the daily series skipped 8 dates | reindexed to a complete 99-day series with zeros |
+| README totals | 83,986 / 1,728 / 24,754, 125 cities | 83,985 / 1,728 / 24,753, 117 cities |
+| README top cities | Lahore "~15,000", 3rd "Peshawar ~4,000" | Lahore **28,015**, 3rd is **Quetta 5,109** |
 
-### 3. Scatter Matrix
-![Scatter Matrix](outputs/figures/22_scatter_matrix.png)
-
-### 4. Correlation Heatmap
-![Correlation](outputs/figures/03_correlation_heatmap.png)
-
-### 5. Province × Month Heatmap
-![Province Heatmap](outputs/figures/26_pivot_heatmap_province_month.png)
-
-### 6. Top 15 Cities
-![Top Cities](outputs/figures/27_pivot_top_cities.png)
-
-### 7. ARIMA Forecast
-![Forecast](outputs/figures/12_forecast_arima.png)
-
-### 8. Linear Forecast
-![Linear Forecast](outputs/figures/34_linear_forecast.png)
-
-> 📁 All 34 visualizations available in [`outputs/figures/`](outputs/figures/)
-> 🌐 6 interactive HTML charts in [`outputs/interactive/`](outputs/interactive/)
+The corrected totals are asserted in `src/data_pipeline.py`, so any future change to the
+cleaning rules shows up immediately in the reports.
 
 ---
 
-## 🤖 Machine Learning Models
+## Machine learning
 
-Three regression models trained to predict daily COVID-19 cases.
+> **This section was rebuilt.** The previous model predicted daily `Cases` using the
+> **same row's** `Deaths` and `Recovered` and a **random** train/test split, which reported
+> an R² of 0.75 that meant nothing. It also imported `GridSearchCV` without ever calling it.
 
-### Model Performance
+### What the model does now
 
-| Rank | Model | R² Score | RMSE | MAE |
-|:----:|:------|:--------:|:----:|:---:|
-| 🥇 | **Gradient Boosting** | **0.7518** | 42.50 | 14.64 |
-| 🥈 | **Random Forest** | 0.7353 | 43.89 | 13.73 |
-| 🥉 | **Linear Regression** | 0.7251 | 44.72 | 18.65 |
+- **Only lagged predictors.** Every feature comes from day *t-1* or earlier: lag-1/3/7 case
+  counts, lag-1 deaths and recoveries, 7- and 14-day rolling mean/std/max, cumulative cases
+  and the growth rate up to *t-1*. No same-day information reaches the target.
+- **Chronological split.** The final 21 days are held out, so the test window sits strictly
+  after the training window.
+- **Real tuning.** Random Forest and Gradient Boosting run through `GridSearchCV` with
+  `TimeSeriesSplit(4)` inside the training window. Best parameters are saved to
+  `models/model_metadata.json`.
+- **Honest benchmark.** A naive "tomorrow = today" model is trained and scored alongside,
+  because a forecast is only useful if it beats that.
 
-### Feature Importance
+### Results (21-day hold-out)
 
-| Feature | Importance |
-|:--------|:----------:|
-| Deaths | **Highest** |
-| Recovered | High |
-| Province | Medium |
-| Is_Local | Low |
-| Month | Low |
+| Model | R² | RMSE | MAE | MAPE |
+|---|---:|---:|---:|---:|
+| **Naive (tomorrow = today)** | **0.779** | **434** | **347** | **15.3 %** |
+| Gradient Boosting (tuned) | −0.264 | 1,039 | 720 | 26.3 % |
+| Random Forest (tuned) | −0.358 | 1,077 | 719 | 25.0 % |
+| Ridge (tuned) | −0.500 | 1,131 | 884 | 34.4 % |
+| Linear Regression | −12.065 | 3,339 | 2,739 | 124 % |
 
----
+**The honest conclusion:** with 62 training days on a steeply rising curve, none of the
+learners beats the naive benchmark. Reporting that is more useful than quoting an inflated
+R². The pipeline demonstrates correct methodology — lagged features, time-ordered
+validation, real tuning and a benchmark — and it is the reason the forecasting job is left
+to ARIMA rather than to a general-purpose regressor.
 
-## 📉 ARIMA Time Series Forecasting
-
-### Model: ARIMA(7, 1, 1)
-
-| Metric | Value |
-|:-------|------:|
-| **AIC** | 1423.38 |
-| **BIC** | 1446.64 |
-| **MAPE** | **23.43%** ✅ |
-| **RMSE** | 859.78 |
-| **MAE** | 585.10 |
-
-### 30-Day Forecast (Jun 4 – Jul 3, 2020)
-
-| Metric | Value |
-|:-------|------:|
-| 📊 **Total Predicted Cases** | 196,422 |
-| 📈 **Average Daily Cases** | 6,547 |
-| 🔺 **Peak Predicted Day** | 7,939 |
-| 🔻 **Minimum Predicted Day** | 4,760 |
+Feature importances (best learner) are saved to `models/feature_importance.csv`; lag-7
+cases, lag-1 CFR and the 14-day rolling mean dominate.
 
 ---
 
-## 📁 Project Structure
+## ARIMA forecasting
+
+The daily series is rebuilt from the cleaned pipeline (99 calendar days, gap days as zero),
+so the model sees an even time index.
+
+- **Order selection:** AIC grid search over `p ∈ {0,1,2,3,7}`, `d ∈ {0,1,2}`, `q ∈ {0,1,2,3}`
+- **Selected:** ARIMA(7, 2, 1)
+- **Validation:** refit on the first 78 days, forecast the final 21
+
+| Metric | ARIMA | Naive | Seasonal naive (t-7) |
+|---|---:|---:|---:|
+| Hold-out MAE | 644.5 | **347.2** | 860.8 |
+| Hold-out RMSE | 768.6 | — | — |
+| Hold-out MAPE | 32.6 % | — | — |
+
+ARIMA does **not** beat the naive one-day-ahead model, but it does beat the seasonal naive.
+The 30-day projection is therefore presented as a **scenario envelope**, not a point
+prediction:
+
+| 30-day projection | Value |
+|---|---:|
+| Total forecast cases | **247,996** |
+| Mean per day | 8,267 |
+| Peak day | 11,553 on 03 Jul 2020 |
+| Minimum day | 4,842 |
+
+Full outputs: `outputs/arima_forecast_30d.csv`, `outputs/arima_holdout.csv`,
+`outputs/arima_order_grid.csv`, `outputs/arima_summary.json`.
+
+---
+
+## Project structure
 
 ```text
-covid19-pakistan-analysis/
+covid-19-portfolio/
 │
 ├── app/
-│   └── app.py                          # Streamlit dashboard
+│   └── app.py                     # Streamlit dashboard
 │
 ├── data/
 │   ├── raw/
-│   │   └── PK COVID-19-3jun.csv        # Original dataset
+│   │   └── PK COVID-19-3jun.csv
 │   └── processed/
-│       └── PK_COVID_19_cleaned.csv     # Cleaned dataset
+│       ├── PK_COVID_19_cleaned.csv   # 2,711 cleaned records
+│       ├── daily_features.csv        # 99-day daily series + lag-free features
+│       ├── province_summary.csv
+│       ├── city_summary.csv
+│       ├── travel_summary.csv
+│       └── model_table.csv           # supervised table with lagged predictors
+│
+├── src/
+│   ├── data_pipeline.py           # cleaning, normalisation, aggregates
+│   ├── ml_models.py               # lagged features, time split, GridSearchCV
+│   ├── arima_forecast.py          # order search, hold-out, 30-day forecast
+│   ├── visualizations.py          # 18 static figures + 6 interactive charts
+│   └── reports.py                 # Excel workbook + text insights
 │
 ├── models/
-│   ├── covid_cases_model.pkl           # Trained Random Forest
-│   ├── model_features.pkl              # Feature list
-│   └── province_encoder.pkl            # Label encoder
+│   ├── covid_cases_model.pkl
+│   ├── model_features.pkl
+│   ├── model_metadata.json        # metrics, best params, cleaning report
+│   ├── feature_importance.csv
+│   └── arima_model.pkl
 │
 ├── notebooks/
-│   └── COVID_19_analysis.ipynb         # Full analysis notebook
+│   └── COVID_19_analysis.ipynb    # narrative walkthrough of the same pipeline
 │
 ├── outputs/
-│   ├── figures/                        # 34 static PNG charts
-│   │   ├── 01_histograms.png
-│   │   ├── ...
-│   │   └── 34_linear_forecast.png
-│   ├── interactive/                    # 6 interactive HTML charts
-│   │   ├── 01_daily_trend.html
-│   │   ├── 02_province_bubble.html
-│   │   ├── 03_treemap.html
-│   │   ├── 04_sunburst.html
-│   │   ├── 05_heatmap.html
-│   │   └── 06_animated.html
-│   ├── COVID19_Analysis_Report.xlsx    # Multi-sheet Excel report
-│   └── COVID19_Insights_Report.txt     # Text insights summary
+│   ├── figures/                   # 18 PNG charts
+│   ├── interactive/               # 6 Plotly HTML charts (~10 KB each, CDN mode)
+│   ├── COVID19_Analysis_Report.xlsx
+│   ├── COVID19_Insights_Report.txt
+│   └── arima_*.csv / .json
 │
+├── requirements.txt
 ├── .gitignore
-├── README.md
-└── requirements.txt
+└── README.md
 ```
 
 ---
 
-## 🛠️ Tech Stack
+## Tech stack
+
 | Technology | Purpose |
-|:-----------|:--------|
-| 🐍 **Python 3.14** | Core language |
-| 🐼 **Pandas** | Data manipulation |
-| 🔢 **NumPy** | Numerical computing |
-| 📊 **Matplotlib** | Base visualizations |
-| 🎨 **Seaborn** | Statistical visualizations |
-| 🌐 **Plotly** | Interactive charts |
-| 🤖 **scikit-learn** | Machine learning |
-| 📉 **statsmodels** | ARIMA forecasting |
-| 🎨 **Streamlit** | Dashboard |
-| 🔬 **SciPy** | Statistical tests |
-| 📗 **openpyxl** | Excel export |
-🚀 Installation
-Prerequisites
-Python 3.10 or higher
+|---|---|
+| Python 3.14 | Core language |
+| pandas / NumPy | Data wrangling and numerics |
+| Matplotlib / Seaborn | Static visualisations |
+| Plotly | Interactive HTML charts |
+| scikit-learn | Regression learners, `GridSearchCV`, `TimeSeriesSplit` |
+| statsmodels | ARIMA, ADF stationarity tests |
+| SciPy | Statistical tests |
+| Streamlit | Interactive dashboard |
+| openpyxl | Excel report |
 
-pip package manager
+---
 
-### Step 1: Clone the Repository
+## Installation
 
-```bash
-git clone https://github.com/Bilaldataorbit/covid19-pakistan-analysis.git
-cd covid19-pakistan-analysis
-```
-
-### Step 2: Create Virtual Environment
+**Prerequisites:** Python 3.10 or newer and `pip`.
 
 ```bash
 python -m venv venv
-```
 
-**Windows:**
-```bash
+# Windows
 venv\Scripts\activate
-```
-
-**Mac/Linux:**
-```bash
+# macOS / Linux
 source venv/bin/activate
-```
 
-### Step 3: Install Dependencies
-
-```bash
 pip install -r requirements.txt
 ```
-💻 Usage
-### Option 1: Run the Streamlit Dashboard
+
+---
+
+## Usage
+
+### 1. Rebuild the data
+
+```bash
+python src/data_pipeline.py
+```
+
+Writes the cleaned CSV plus every aggregate and the supervised model table.
+
+### 2. Train the models
+
+```bash
+python src/ml_models.py
+```
+
+Runs the tuning grid, prints the hold-out comparison against the naive benchmark, and saves
+the artefacts and the metadata JSON.
+
+### 3. Fit ARIMA and build the forecast
+
+```bash
+python src/arima_forecast.py
+```
+
+### 4. Regenerate every chart
+
+```bash
+python src/visualizations.py
+```
+
+18 PNGs into `outputs/figures`, 6 interactive HTML files into `outputs/interactive`.
+
+### 5. Rebuild the reports
+
+```bash
+python src/reports.py
+```
+
+### 6. Launch the dashboard
 
 ```bash
 streamlit run app/app.py
 ```
 
-Browser will open at `http://localhost:8501`
+Open <http://localhost:8501>.
 
-### Option 2: Explore the Jupyter Notebook
+### 7. Run everything at once
 
 ```bash
-jupyter notebook notebooks/COVID_19_analysis.ipynb
+python src/data_pipeline.py && python src/ml_models.py && \
+python src/arima_forecast.py && python src/visualizations.py && python src/reports.py
 ```
 
-### Option 3: Use the Trained Model
+---
 
-```python
-import pickle
-import pandas as pd
+## Limitations
 
-with open('models/covid_cases_model.pkl', 'rb') as f:
-    model = pickle.load(f)
+- **The ML models do not beat the naive benchmark.** That is reported, not hidden. The
+  earlier 0.75 R² came from same-day leakage and a random split.
+- **ARIMA does not beat the naive one-day-ahead model** either, though it does beat the
+  seasonal naive. The projection should be read as a scenario band.
+- **`Recovered` is under-reported**, so the recovery rate is a lower bound.
+- **`Unknown` exposure source is a reporting gap**, and its 22,659 cases inflate the
+  apparent local-transmission share.
+- **Exposure source and province are correlated**, so provincial CFR differences are not a
+  clean measure of care quality.
+- **Only 91 distinct dates over a 99-day window**, and only 62 usable training rows after
+  lag construction. Any conclusion here is descriptive, not predictive at scale.
 
-input_data = pd.DataFrame({
-    'Deaths': [5],
-    'Recovered': [50],
-    'Is_Local': [1],
-    'Is_Tableeghi': [0],
-    'Month': [6],
-    'DayOfWeek_Num': [2],
-    'Province_Encoded': [7]
-})
+---
 
-prediction = model.predict(input_data)
-print(f"Predicted Cases: {prediction[0]:.0f}")
-```
-
-### Option 4: View Interactive Charts
-
-Open any HTML file from `outputs/interactive/` in your browser.
-
-🎓 Skills Demonstrated
-- ✅ **Data Wrangling** — Pandas, NumPy (2,798 records)
-- ✅ **Exploratory Data Analysis** — Statistical summaries + visualizations
-- ✅ **Feature Engineering** — Date features, binary flags, derived metrics
-- ✅ **Machine Learning** — Regression, ensemble methods, hyperparameter tuning
-- ✅ **Time Series** — Stationarity tests, ARIMA, forecasting, backtesting
-- ✅ **Data Visualization** — 34 static + 6 interactive charts
-- ✅ **Web Development** — Streamlit for interactive dashboards
-- ✅ **Interactive Analytics** — Plotly for HTML charts
-- ✅ **Automated Reporting** — Excel + TXT report generation
-- ✅ **Model Deployment** — Pickle serialization, GitHub, Streamlit Cloud
-- ✅ **Best Practices** — Virtual environments, modular structure, documentation
-
-## 👨‍💻 Author
+## Author
 
 **Bilal Raza**
 
-- 🐙 GitHub: [@Bilaldataorbit](https://github.com/Bilaldataorbit)
-- 📧 Email: dataorbit.official@gmail.com
+- GitHub: [@Bilaldataorbit](https://github.com/Bilaldataorbit)
+- Email: dataorbit.official@gmail.com
 
----
+## License
 
-## 📜 License
-
-This project is licensed under the **MIT License**.
-
----
-
-## 🙏 Acknowledgments
-
-- 📊 **Data Source:** Pakistan COVID-19 tracking data (Feb–Jun 2020)
-- 🎨 **Inspiration:** Various data science portfolio projects
-- 🤝 **Community:** Open-source contributors
-
-<div align="center">
-⭐ If you found this project helpful, please give it a star!
-Made with ❤️ by Bilal Raza
-
-</div> 
+MIT — see `LICENSE` if present, otherwise free to reuse with attribution.
