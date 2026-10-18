@@ -1,5 +1,10 @@
 # 🦠 COVID-19 Pakistan — End-to-End Data Science Project
 
+> **This is a historical analysis, not a live tracker.**
+> Every number here describes Pakistan between **26 February and 3 June 2020**. It does not
+> reflect the current COVID-19 situation in Pakistan or anywhere else, and the forecasts are
+> back-tests against a closed historical window.
+
 Exploratory analysis, statistical testing, leakage-free machine learning, ARIMA forecasting,
 a Streamlit dashboard and automated reports — all built on one cleaned dataset of
 Pakistan's COVID-19 records from **26 Feb 2020 to 03 Jun 2020**.
@@ -367,6 +372,17 @@ python src/arima_forecast.py && python src/visualizations.py && python src/repor
   clean measure of care quality.
 - **Only 91 distinct dates over a 99-day window**, and only 62 usable training rows after
   lag construction. Any conclusion here is descriptive, not predictive at scale.
+- **Active cases are an estimate,** computed as `Cases − Deaths − Recovered`. The source
+  reports recoveries in batches, so **402 of the 2,711 records (14.8%)** would show a negative
+  row-level active count — Recovered exceeds Cases on those rows because recoveries were
+  reported on days with no new cases for that city. The figure is never clamped to zero,
+  because clamping would hide the inconsistency. The national aggregate (57,504) is positive
+  and usable, but it is an approximation, not a verified active-case count.
+- **The historical framing matters.** Present this as a retrospective study of Feb–Jun 2020,
+  not as a report on the present. The ARIMA projection covers 04 Jun – 03 Jul 2020 and has
+  already been overtaken by events.
+- **The dataset is a convenience sample**, not an official government feed, so totals may
+  differ from Ministry of Health figures for the same dates.
 
 ---
 
@@ -465,4 +481,26 @@ Then create the app in the Streamlit Cloud web UI with the settings table above.
 
 ## License
 
-MIT — see `LICENSE` if present, otherwise free to reuse with attribution.
+**MIT** — see [LICENSE](LICENSE) for the full text.
+
+```text
+MIT License · Copyright (c) 2026 Bilal Raza
+```
+
+The licence covers the code and the analysis. The underlying observations remain subject to
+the terms of their original source.
+
+## Data limitations
+
+Short version, so nobody has to hunt for it:
+
+- **Historical window only.** 26 February – 3 June 2020. Not a live COVID-19 tracker.
+- **Missing calendar dates are filled with zero** in the daily series. That is an analytical
+  assumption (no record that day), not proof that no cases occurred.
+- **Active cases are estimated** as `Cases − Deaths − Recovered`. 402 records (14.8%) would show
+  a negative row-level value because recoveries were reported in batches; the values are left
+  as computed rather than clamped so the inconsistency stays visible.
+- **`Unknown` exposure source is a reporting gap** — 19,200 of its 22,659 cases come from
+  36 rows whose source field was blank.
+- **Forecasts are exploratory.** The ML learners do not beat the naive baseline and ARIMA does
+  not beat it either; both results are reported rather than hidden.

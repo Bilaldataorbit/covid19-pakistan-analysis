@@ -126,12 +126,35 @@ date_range = st.sidebar.date_input("Date range", value=(dmin, dmax),
 province_sel = st.sidebar.multiselect("Province", sorted(clean["Province"].unique()))
 travel_sel = st.sidebar.multiselect("Exposure source", sorted(clean["Travel_history"].unique()))
 
-mask = (clean["Date"].dt.date >= date_range[0]) & (clean["Date"].dt.date <= date_range[1])
+# The date input returns a single date while the user is still picking the range,
+# so never index blindly into date_range[0] / date_range[1].
+if isinstance(date_range, (tuple, list)):
+    if len(date_range) == 2:
+        start_date, end_date = date_range
+    elif len(date_range) == 1:
+        start_date = end_date = date_range[0]
+    else:
+        start_date, end_date = dmin, dmax
+else:
+    start_date = end_date = date_range
+
+if start_date > end_date:
+    start_date, end_date = end_date, start_date
+
+mask = (clean["Date"].dt.date >= start_date) & (clean["Date"].dt.date <= end_date)
 view = clean[mask]
+
 if province_sel:
     view = view[view["Province"].isin(province_sel)]
 if travel_sel:
     view = view[view["Travel_history"].isin(travel_sel)]
+
+if view.empty:
+    st.warning(
+        "No records match the current filters. Widen the date range or clear the "
+        "province / exposure-source selection."
+    )
+    st.stop()
 
 # -------------------------------------------------------------------------- KPIs
 c1, c2, c3, c4, c5 = st.columns(5)
@@ -141,7 +164,15 @@ c1.metric("Total cases", f"{tc:,}")
 c2.metric("Deaths", f"{td:,}")
 c3.metric("Recovered", f"{tr:,}")
 c4.metric("Case fatality", f"{(td / tc * 100 if tc else 0):.2f}%")
-c5.metric("Active", f"{tc - td - tr:,}")
+c5.metric("Active (estimated)", f"{tc - td - tr:,}",
+          help="Cases - deaths - recovered. Not a verified active-case count.")
+st.caption(
+    "**Active cases are an estimate.** They are computed as cases minus deaths minus "
+    "recoveries. The historical source reports recoveries in batches, so 402 individual "
+    "records (14.8%) would show a negative row-level active count; that is a reporting "
+    "artefact, not a real value. The national total above is positive and usable, but "
+    "treat it as an approximation rather than a verified active-case count."
+)
 
 st.divider()
 
