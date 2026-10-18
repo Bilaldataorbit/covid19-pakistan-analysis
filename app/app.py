@@ -104,8 +104,8 @@ c5.metric("Active", f"{tc - td - tr:,}")
 st.divider()
 
 # ---------------------------------------------------------------------- tabs
-tab_trend, tab_geo, tab_source, tab_model, tab_data = st.tabs(
-    ["📈 Trend", "🗺️ Geography", "🦠 Exposure source", "🤖 Model", "📋 Data"]
+tab_trend, tab_geo, tab_source, tab_dist, tab_model, tab_data = st.tabs(
+    ["📈 Trend", "🗺️ Geography", "🦠 Exposure source", "📊 Distribution", "🤖 Model", "📋 Data"]
 )
 
 # ------------------------------------------------------------------ trend tab
@@ -193,6 +193,43 @@ with tab_source:
         "so 'Unknown' is a reporting gap, not a transmission category."
     )
 
+# -------------------------------------------------------------- distribution tab
+with tab_dist:
+    l, r = st.columns(2)
+    with l:
+        f = px.histogram(view, x="Cases", nbins=40, title="Distribution of case counts per record",
+                         color_discrete_sequence=[ACCENT])
+        f.update_layout(template="plotly_white", height=380, bargap=.05)
+        st.plotly_chart(f, use_container_width=True)
+    with r:
+        f = px.box(view, x="Province", y="Cases", color="Province",
+                   title="Record-level cases by province")
+        f.update_layout(template="plotly_white", height=380, showlegend=False)
+        f.update_xaxes(tickangle=35)
+        st.plotly_chart(f, use_container_width=True)
+
+    l, r = st.columns(2)
+    with l:
+        d = view.groupby("Date").agg(Cases=("Cases", "sum"),
+                                     Deaths=("Deaths", "sum")).reset_index()
+        f = px.histogram(d, x="Cases", nbins=25, title="Distribution of daily totals",
+                         color_discrete_sequence=[WARN])
+        f.update_layout(template="plotly_white", height=360, bargap=.05)
+        st.plotly_chart(f, use_container_width=True)
+    with r:
+        f = px.violin(view, x="Is_Local" if "Is_Local" in view.columns else "Province",
+                      y="Cases", title="Local transmission vs imported records" if "Is_Local" in view.columns
+                      else "Cases by province", color="Province" if "Is_Local" not in view.columns else "Is_Local",
+                      box=True)
+        f.update_layout(template="plotly_white", height=360, showlegend=False)
+        f.update_yaxes(type="log")
+        st.plotly_chart(f, use_container_width=True)
+
+    st.caption(f"{len(view):,} records in the current filter. "
+               f"Median record = {view['Cases'].median():.0f} cases, "
+               f"mean = {view['Cases'].mean():.1f} - the mean sits far above the median, "
+               "which is why the distribution is plotted on a log axis.")
+
 # ----------------------------------------------------------------- model tab
 with tab_model:
     st.subheader("Forecasting models")
@@ -205,12 +242,15 @@ with tab_model:
         res = res.rename(columns={"index": "model"})
         st.dataframe(res, use_container_width=True, hide_index=True)
 
-        st.markdown(
-            "**Why there is no impressive R² here.** The predictors are all lagged, and the "
-            "split is chronological, so the score reflects genuine out-of-sample skill. "
-            "On only 62 training days 'tomorrow = today' is a very strong benchmark, and "
-            "adding time trends does not beat it. The earlier 0.75 R² came from using "
-            "same-day deaths and recoveries plus a random split."
+        naive_rmse = meta["results"].get("Naive (tomorrow = today)", {}).get("RMSE")
+        best_rmse = meta["results"].get(meta.get("best_model", ""), {}).get("RMSE")
+        st.warning(
+            "**Why there is no impressive R² here.** The predictors are all lagged and the split "
+            "is chronological, so this score is genuine out-of-sample skill. On only 62 training "
+            "days 'tomorrow = today' is a very strong benchmark"
+            + (f" (RMSE {naive_rmse:,.0f} vs {best_rmse:,.0f} for the best learner)" if naive_rmse and best_rmse else "")
+            + ", and the learners do not beat it. The earlier 0.75 R² came from using same-day "
+              "deaths and recoveries plus a random split, which is leakage."
         )
 
     if arima_fc is not None:
@@ -227,36 +267,65 @@ with tab_model:
                                fill="tonexty", line=dict(width=0),
                                fillcolor="rgba(191,143,0,.18)", name="95% interval"))
         f.update_layout(template="plotly_white", height=430,
-                        title="ARIMA forecast with a 95% interval")
+                        title="ARIMA forecast with a 95% interval",
+                        legend=dict(orientation="h", y=1.02))
         st.plotly_chart(f, use_container_width=True)
+        if os.path.exists(os.path.join(BASE, "outputs", "arima_summary.json")):
+            with open(os.path.join(BASE, "outputs", "arima_summary.json"), encoding="utf-8") as fh:
+                ar_sum = json.load(fh)
+            st.caption(
+                f"ARIMA{ar_sum['order']} · hold-out MAE {ar_sum['holdout_metrics']['MAE']:,.0f} "
+                f"(naive {ar_sum['naive_holdout_mae']:,.0f}, "
+                f"seasonal naive {ar_sum['seasonal_naive_holdout_mae']:,.0f}) · "
+                f"30-day total {ar_sum['forecast_total']:,} cases. "
+                "ARIMA beats the seasonal naive but not the one-day naive model, so read the "
+                "projection as a scenario envelope."
+            )
 
-    st.subheader("What-if scenario")
-    st.write("Set the last few days of history and the dashboard rebuilds the lag features "
-             "and asks the trained model for the next day.")
+    # ------------------------------------------------------------ scenario tool
+    st.subheader("Next-day scenario")
+    st.write(
+        "The learner does not beat the naive benchmark, so this tool deliberately shows three "
+        "estimates side by side instead of a single confident number."
+    )
     a, b, c = st.columns(3)
-    lag1 = a.number_input("Cases yesterday", min_value=0, value=int(daily['Cases'].iloc[-1]))
-    lag3 = b.number_input("Cases 3 days ago", min_value=0, value=int(daily['Cases'].iloc[-3]))
-    lag7 = c.number_input("Cases 7 days ago", min_value=0, value=int(daily['Cases'].iloc[-7]))
-    if st.button("Predict tomorrow"):
+    lag1 = a.number_input("Cases yesterday", min_value=0, value=int(daily["Cases"].iloc[-1]))
+    lag3 = b.number_input("Cases 3 days ago", min_value=0, value=int(daily["Cases"].iloc[-3]))
+    lag7 = c.number_input("Cases 7 days ago", min_value=0, value=int(daily["Cases"].iloc[-7]))
+
+    if st.button("Estimate tomorrow", type="primary"):
         recent = daily["Cases"].tail(14).values
         row = {
-            "Lag_Cases_1": lag1, "Lag_Cases_3": lag3, "Lag_Cases_7": lag7,
-            "Lag_Deaths_1": daily["Deaths"].iloc[-1],
-            "Lag_Recovered_1": daily["Recovered"].iloc[-1],
+            "Lag_Cases_1": lag1,
+            "Lag_Cases_3": lag3,
+            "Lag_Cases_7": lag7,
+            "Lag_Deaths_1": float(daily["Deaths"].iloc[-1]),
+            "Lag_Recovered_1": float(daily["Recovered"].iloc[-1]),
             "Roll_Mean_7": float(np.mean(recent[-7:])),
             "Roll_Mean_14": float(np.mean(recent)),
             "Roll_Std_7": float(np.std(recent[-7:], ddof=1)),
             "Roll_Max_14": float(np.max(recent)),
             "Cumul_Cases_Lag": float(daily["Cases"].sum()),
-            "DayOfWeek_Num": int(daily["Date"].iloc[-1].dayofweek + 1) % 7,
+            "DayOfWeek_Num": int(daily["Date"].iloc[-1].dayofweek),
             "Month": int(daily["Date"].iloc[-1].month),
             "CFR_Lag_1": float(daily["Deaths"].sum() / daily["Cases"].sum() * 100),
             "Growth_Lag_1": float(daily["Cases"].pct_change().iloc[-1] * 100),
         }
         X = pd.DataFrame([row])[features]
-        pred = float(model.predict(X)[0])
-        st.success(f"Predicted cases for the next day: **{pred:,.0f}**  "
-                   f"(naive 'tomorrow = today' would say {lag1:,})")
+        learner = float(model.predict(X)[0])
+
+        k1, k2, k3 = st.columns(3)
+        k1.metric("Naive (tomorrow = today)", f"{lag1:,.0f}", "best hold-out model")
+        k2.metric("7-day average", f"{np.mean(recent[-7:]):,.0f}", "smoothed recent pace")
+        k3.metric("Trained learner", f"{learner:,.0f}", "underperforms the naive")
+
+        if learner < 0.5 * lag1 or learner > 2.0 * lag1:
+            st.info(
+                f"The learner returned {learner:,.0f}, which is more than 2x away from yesterday's "
+                f"{lag1:,}. That is expected: `Cumul_Cases_Lag` is {row['Cumul_Cases_Lag']:,.0f}, above "
+                f"the largest value it saw in training ({79000:,}), so the model is extrapolating "
+                "outside its range. Trust the naive or the 7-day average instead."
+            )
 
 # ------------------------------------------------------------------ data tab
 with tab_data:
