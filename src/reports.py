@@ -24,6 +24,9 @@ from openpyxl.utils import get_column_letter
 from arima_forecast import run as arima_run
 from data_pipeline import ROOT, build_all
 from ml_models import feature_importance, train_and_evaluate
+from regression_analysis import export_report as export_regression
+from regression_analysis import run_all as run_regression
+from statistical_tests import run_all as run_stats
 
 OUT_DIR = os.path.join(ROOT, "outputs")
 os.makedirs(OUT_DIR, exist_ok=True)
@@ -64,7 +67,7 @@ def _sheet(wb, title, df, start=3, note=None):
     return ws
 
 
-def build_excel(out, res, ar, path=None) -> str:
+def build_excel(out, res, ar, reg=None, stats_res=None, path=None) -> str:
     path = path or os.path.join(OUT_DIR, "COVID19_Analysis_Report.xlsx")
     df, daily, prov, city, travel = (out["df"], out["daily"], out["province"],
                                      out["city"], out["travel"])
@@ -175,6 +178,49 @@ def build_excel(out, res, ar, path=None) -> str:
            note="30-day projection with a 95% interval")
     _sheet(wb, "ARIMA Order Grid", ar["grid"].head(20),
            note="AIC grid search used to pick the order")
+
+    # ---------------------------------------------------------- statistics
+    if stats_res:
+        _sheet(wb, "Stats_Descriptive", stats_res["descriptive"],
+               note="Daily series profile from src/statistical_tests.py")
+        _sheet(wb, "Stats_Correlation", stats_res["correlation"]["pairs"],
+               note="Pearson and Spearman with p-values")
+        _sheet(wb, "Stats_ChiSquare", stats_res["chi_square"]["table"].reset_index(),
+               note=f"chi2={stats_res['chi_square']['chi2']:.3f} "
+                    f"p={stats_res['chi_square']['p']:.3e} "
+                    f"Cramer's V={stats_res['chi_square']['cramers_v']:.4f}")
+        _sheet(wb, "Stats_ANOVA", stats_res["anova"]["summary"],
+               note=f"F={stats_res['anova']['f']:.3f} p={stats_res['anova']['p']:.3e} "
+                    f"eta2={stats_res['anova']['eta_squared']:.4f}")
+        _sheet(wb, "Stats_Normality", stats_res["normality"]["table"],
+               note="Four normality tests on daily cases")
+        np_rows = []
+        for name, v in stats_res["nonparametric"].items():
+            row = {"test": name}
+            row.update({k: v[k] for k in v if k not in ("verdict",)})
+            row["verdict"] = v["verdict"]
+            np_rows.append(row)
+        _sheet(wb, "Stats_NonParametric", pd.DataFrame(np_rows),
+               note="Rank-based alternatives, used because the daily series is not normal")
+
+    # ---------------------------------------------------------- regression
+    if reg:
+        _sheet(wb, "Reg_Simple_LR", reg.simple_sm["table"],
+               note=reg.simple_sm["equation"])
+        _sheet(wb, "Reg_Multiple_LR", reg.multiple["table"],
+               note=reg.multiple["equation"])
+        _sheet(wb, "Reg_VIF", reg.multiple["vif"],
+               note="VIF below 5 is comfortable")
+        _sheet(wb, "Reg_Diagnostics", reg.diagnostics["summary_table"],
+               note="Durbin-Watson, Breusch-Pagan, Jarque-Bera, Shapiro-Wilk")
+        _sheet(wb, "Reg_Polynomial", reg.polynomial["table"],
+               note="Degrees 1 to 5 compared on R2, adjusted R2, AIC and RMSE")
+        _sheet(wb, "Reg_Logistic", reg.logistic["table"],
+               note=f"pseudo R2={reg.logistic['pseudo_r2']:.4f}")
+        _sheet(wb, "Reg_Classification", reg.classification["metrics"],
+               note=f"AUC={reg.classification['auc']:.4f}")
+        _sheet(wb, "Reg_CrossValidation", reg.cv["table"],
+               note="KFold with Ridge and Lasso alpha grid")
 
     wb.save(path)
     print("  wrote", path)
@@ -310,9 +356,12 @@ def main():
     out = build_all(verbose=False)
     res = train_and_evaluate(verbose=False)
     ar = arima_run(verbose=False)
-    p1 = build_excel(out, res, ar)
+    reg = run_regression(verbose=False)
+    stats_res = run_stats(verbose=False)
+    p1 = build_excel(out, res, ar, reg, stats_res)
     p2 = build_txt(out, res, ar)
-    return p1, p2
+    p3 = export_regression(reg)          # standalone Regression_Analysis_Report.xlsx
+    return p1, p2, p3
 
 
 if __name__ == "__main__":

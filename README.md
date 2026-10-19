@@ -33,6 +33,7 @@ Pakistan's COVID-19 records from **26 Feb 2020 to 03 Jun 2020**.
 - [Project overview](#project-overview)
 - [Key findings](#key-findings)
 - [Data quality and what changed](#data-quality-and-what-changed)
+- [Regression fundamentals](#regression-fundamentals)
 - [Machine learning](#machine-learning)
 - [ARIMA forecasting](#arima-forecasting)
 - [Project structure](#project-structure)
@@ -54,8 +55,9 @@ pipeline:
 |---|---|
 | **Cleaning** | De-duplicates records, normalises 129 city spellings to 117, flags blank exposure sources |
 | **EDA** | Daily / province / city / exposure-source analysis, 18 static figures, 6 interactive charts |
-| **Statistics** | Descriptive profile, correlation, chi-square, ANOVA, normality and non-parametric tests |
-| **Machine learning** | 4 regression learners with lagged features and a chronological split |
+| **Statistics** | Descriptive profile, Pearson/Spearman correlation, chi-square, ANOVA + Tukey, four normality tests (Shapiro-Wilk, D'Agostino, Jarque-Bera, KS) and four non-parametric tests (Mann-Whitney, Kruskal-Wallis, Wilcoxon, Spearman) |
+| **Regression** | Simple LR (statsmodels `sm.OLS` + scikit-learn), multiple LR with VIF, polynomial degree comparison, logistic regression, ROC/AUC/confusion matrix, KFold with Ridge and Lasso |
+| **Machine learning** | 4 forecasting learners with lagged features and a chronological split |
 | **Forecasting** | ARIMA with an AIC order search and a 21-day hold-out |
 | **Delivery** | Streamlit dashboard, Excel workbook, text insights report |
 
@@ -137,6 +139,94 @@ The corrected totals are asserted in `src/data_pipeline.py`, so any future chang
 cleaning rules shows up immediately in the reports.
 
 ---
+
+## Regression fundamentals
+
+The course asks for a specific set of regression models on the daily series, with same-day
+predictors (`Day_Num`, `Deaths`, `Recovered`). That is a **descriptive** exercise, and it is
+kept separate from the forecasting model in the next section, which uses lagged predictors
+because a forecaster cannot see today's deaths when predicting today's cases.
+
+Everything lives in [`src/regression_analysis.py`](src/regression_analysis.py) and is
+reproduced in notebook section 4.
+
+| # | Requirement | Implementation |
+|:--:|---|---|
+| 1 | Simple LR, `sm.OLS` full summary | `simple_lr_statsmodels()` — prints the complete statsmodels table |
+| 2 | Simple LR, scikit-learn | `simple_lr_sklearn()` — same coefficients, confirms the two libraries agree |
+| 3 | Multiple LR + VIF | `multiple_lr_vif()` — `variance_inflation_factor` plus tolerance |
+| 4 | Diagnostics | `regression_diagnostics()` — Durbin-Watson, Breusch-Pagan, Jarque-Bera, Shapiro-Wilk |
+| 5 | Polynomial, degree comparison | `polynomial_comparison()` — degrees 1–5 on R², adjusted R², AIC, RMSE |
+| 6 | Logistic regression | `logistic_high_cases()` — `sm.Logit` on `High_Cases`, with odds ratios |
+| 7 | ROC, AUC, confusion matrix | `roc_auc_confusion()` — full metric set and a Youden-J threshold |
+| 8 | Cross-validation, Ridge/Lasso | `cross_validation_ridge_lasso()` — KFold across an alpha grid |
+| 9 | Excel export | `export_report()` → `outputs/Regression_Analysis_Report.xlsx` |
+
+### Results
+
+**Simple linear regression** `Cases = -615.94 + 33.45 × Day_Num`
+
+| Metric | Value |
+|---|---:|
+| R² | 0.7523 |
+| Adjusted R² | 0.7495 |
+| F (p) | 270.4 (1.03e-28) |
+| Residual std error | 504.19 |
+
+**Multiple linear regression** `Cases = -148.90 + 30.64·Deaths + 0.231·Recovered + 9.28·Day_Num`
+
+| Metric | Value |
+|---|---:|
+| R² | 0.8846 |
+| Adjusted R² | 0.8806 |
+| F (p) | 222.26 (1.14e-40) |
+| Max VIF | 5.67 (Deaths, moderate) |
+
+**Diagnostics** — the residuals are autocorrelated, heteroscedastic and non-normal, which is
+exactly what a time series does and the reason the forecasting section uses lagged features:
+
+| Test | Statistic | p | Reading |
+|---|---:|---:|---|
+| Durbin-Watson | 1.2786 | — | positive autocorrelation |
+| Breusch-Pagan | 20.80 | 0.0001 | heteroscedastic |
+| Jarque-Bera | 117.20 | ≈ 0 | residuals not normal |
+| Shapiro-Wilk | 0.8890 | ≈ 0 | residuals not normal |
+
+**Polynomial comparison**
+
+| Degree | R² | Adjusted R² | AIC | RMSE |
+|---:|---:|---:|---:|---:|
+| 1 | 0.7523 | 0.7495 | 1394.8 | 504.2 |
+| 2 | 0.8679 | 0.8649 | 1339.6 | 368.2 |
+| 3 | 0.8789 | 0.8747 | 1333.7 | 352.6 |
+| 4 | 0.8892 | 0.8840 | 1327.7 | 337.3 |
+| 5 | 0.9115 | 0.9063 | 1309.2 | 301.4 |
+
+Degree 5 fits best in-sample, but that is overfitting; the quadratic is the interpretable
+choice and already captures the accelerate-then-flatten shape.
+
+**Logistic regression** `logit(p) = -4.713 + 0.286·Day_Num − 0.191·Deaths`, pseudo R² = 0.694
+
+| Metric | Value |
+|---|---:|
+| Accuracy | 0.9451 |
+| Precision | 0.9600 |
+| Recall | 0.9730 |
+| F1 | 0.9664 |
+| AUC | 0.9769 |
+
+Confusion matrix: TN 14, FP 3, FN 2, TP 72. The high AUC is a property of the exercise (the
+target is a threshold on a monotone curve), not a clinical result.
+
+**Cross-validation** (5-fold KFold, standardised features): OLS 0.8495, best Ridge
+(α = 0.01) 0.8495, best Lasso (α = 10) 0.8511.
+
+### Cross-check against the Excel workbook
+
+The same models were built independently in `PK_COVID_Analysis_FINAL.xlsx`. Both
+implementations return identical coefficients — simple LR slope 33.4532, multiple LR
+`-148.9037 / 30.6391 / 0.2314 / 9.2838`, logistic `-4.7128 / 0.2864 / -0.1906` — so the two
+deliverables validate each other rather than being two unverified copies.
 
 ## Machine learning
 
@@ -230,6 +320,8 @@ covid-19-portfolio/
 │
 ├── src/
 │   ├── data_pipeline.py           # cleaning, normalisation, aggregates
+│   ├── statistical_tests.py       # descriptive, correlation, chi2, ANOVA, normality, non-parametric
+│   ├── regression_analysis.py     # simple/multiple/polynomial/logistic LR, VIF, diagnostics, ROC, CV
 │   ├── ml_models.py               # lagged features, time split, GridSearchCV
 │   ├── arima_forecast.py          # order search, hold-out, 30-day forecast
 │   ├── visualizations.py          # 18 static figures + 6 interactive charts
@@ -249,6 +341,7 @@ covid-19-portfolio/
 │   ├── figures/                   # 18 PNG charts
 │   ├── interactive/               # 6 Plotly HTML charts (~10 KB each, CDN mode)
 │   ├── COVID19_Analysis_Report.xlsx
+│   ├── Regression_Analysis_Report.xlsx   # 9 sheets, one per requirement
 │   ├── COVID19_Insights_Report.txt
 │   └── arima_*.csv / .json
 │
@@ -337,6 +430,9 @@ python src/visualizations.py
 18 PNGs into `outputs/figures`, 6 interactive HTML files into `outputs/interactive`.
 
 ### 5. Rebuild the reports
+
+The report step also writes `Regression_Analysis_Report.xlsx` and runs the full
+statistical battery.
 
 ```bash
 python src/reports.py
