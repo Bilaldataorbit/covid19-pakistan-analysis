@@ -6,7 +6,7 @@
 > back-tests against a closed historical window.
 
 Exploratory analysis, statistical testing, leakage-free machine learning, ARIMA forecasting,
-a Streamlit dashboard and automated reports — all built on one cleaned dataset of
+K-Means clustering, PCA, a Streamlit dashboard and automated reports — all built on one cleaned dataset of
 Pakistan's COVID-19 records from **26 Feb 2020 to 03 Jun 2020**.
 
 <p align="left">
@@ -36,6 +36,7 @@ Pakistan's COVID-19 records from **26 Feb 2020 to 03 Jun 2020**.
 - [Regression fundamentals](#regression-fundamentals)
 - [Machine learning](#machine-learning)
 - [ARIMA forecasting](#arima-forecasting)
+- [Forecasting, clustering and PCA](#-forecasting-clustering-and-pca)
 - [Project structure](#project-structure)
 - [Tech stack](#tech-stack)
 - [Installation](#installation)
@@ -59,7 +60,8 @@ pipeline:
 | **Regression** | Simple LR (statsmodels `sm.OLS` + scikit-learn), multiple LR with VIF, polynomial degree comparison, logistic regression, ROC/AUC/confusion matrix, KFold with Ridge and Lasso |
 | **Machine learning** | 4 forecasting learners with lagged features and a chronological split |
 | **Forecasting** | ARIMA with an AIC order search and a 21-day hold-out |
-| **Delivery** | Streamlit dashboard, Excel workbook, text insights report |
+| **Forecasting, clustering, PCA** | One extended notebook (Holt-Winters, ARIMA/SARIMA, K-Means, hierarchical, DBSCAN, PCA, t-SNE) plus a 37-sheet Excel report with live formulas |
+| **Delivery** | Streamlit dashboard, Excel workbooks, text insights report |
 
 The whole pipeline lives in `src/` and is reproducible end to end — see [Usage](#usage).
 
@@ -299,6 +301,72 @@ Full outputs: `outputs/arima_forecast_30d.csv`, `outputs/arima_holdout.csv`,
 
 ---
 
+## 🧠 Forecasting, clustering and PCA
+
+One extended notebook, [`notebooks/Covid19_Forecasting_Clustering_PCA_Analysis.ipynb`](notebooks/Covid19_Forecasting_Clustering_PCA_Analysis.ipynb), runs three further analyses on the same cleaned data. A matching Excel workbook with live formulas (no pasted values) is in [`outputs/Pakistan_COVID19_Data_Analysis_Report.xlsx`](outputs/Pakistan_COVID19_Data_Analysis_Report.xlsx), 37 sheets.
+
+| Part | What it does | Outputs |
+|:--|:--|:--|
+| **A. Time series forecasting** | Daily cases: decomposition, ADF / KPSS stationarity tests, ACF / PACF, 14-day hold-out, Naive / Seasonal naive / Holt-Winters / ARIMA / SARIMA (Auto-ARIMA and Prophet if installed), model comparison, 14-day forecast with confidence interval, per-province forecasts, rolling-origin cross-validation | `outputs/forecasting/` |
+| **B. K-Means clustering** | Cities, provinces, weekly phases, travel history; elbow, silhouette, Davies-Bouldin and Calinski-Harabasz for choosing K; hierarchical clustering, DBSCAN, Gaussian mixtures; K-Means rebuilt from scratch to match the Excel sheets | `outputs/clustering/` |
+| **C. PCA** | Bartlett / KMO / VIF checks, scree and loadings, bootstrap check of the loadings, biplot, 2D / 3D / interactive views, K-Means in PC space, temporal PCA, Kernel PCA, t-SNE, Isomap / LLE / ICA / NMF, LDA, reconstruction error, anomaly detection | `outputs/pca/` |
+
+### Forecasting
+
+The notebook uses a **14-day** hold-out and a short list of methods. The ARIMA section above uses a **21-day** hold-out and its own order search (`src/arima_forecast.py`). Different windows give different rankings, so the two sections should not be read as contradicting each other. What they agree on: for a series that was still rising fast, a naive "tomorrow = today" forecast is a hard baseline to beat, and anything beyond a week or so is wide open.
+
+In the **Excel workbook** (trained on the first 85 days, tested on the last 14, every model built from formulas):
+
+| Model (14-day test) | RMSE |
+|:--|--:|
+| Naive | 1,111 |
+| **Holt-Winters (additive)** | **861** |
+
+Holt-Winters is about 22% better than naive on that window. The weekly pattern is clear: Monday is the highest reporting day (about 1.3x its weekly average), Sunday the lowest (about 0.8x). The Python results are printed in the notebook (sections A11 to A17) and saved to `outputs/forecasting/Forecasting_Report.xlsx`.
+
+### Clustering (K = 3, city level, cities with at least 5 cases)
+
+| Cluster | Cities | Share of cases | Average cases per city | CFR |
+|:--|--:|--:|--:|--:|
+| Epicenter (Karachi, Lahore) | 2 | 68% | 28,680 | 1.9% |
+| Hotspot (Peshawar, Bajaur, Mansehra, Swabi, Kohat) | 11 | 7% | 522 | 5.9% |
+| Low-burden (Quetta, Islamabad, Swat, Multan, Sukkur ...) | 95 | 25% | 220 | 1.5% |
+
+K = 2 scores best on silhouette and Davies-Bouldin (it simply splits off the two giant cities), while K = 3 gives a more useful three-way profile. The notebook reports all four metrics and states the choice. The Excel sheets (`KMeans_City`, `Elbow_Silhouette` and others) reproduce the same assignments with formulas.
+
+### PCA (cities with at least 10 cases)
+
+| Finding | Value |
+|:--|:--|
+| PC1 (outbreak size) | 70.2% of variance |
+| PC2 (CFR and recovery rate) | 16.1% of variance |
+| PC1 + PC2 / PC1 + PC2 + PC3 | 86.3% / 95.4% |
+| Bartlett test | p < 0.001: the features are strongly correlated |
+| KMO | 0.78 |
+
+Karachi and Lahore sit far from every other city on PC1, so on raw counts K-Means in PC space isolates them in tiny clusters, and its high silhouette score reflects that rather than clean groups among the other cities. The notebook repeats the analysis with a log transform to show how much the result depends on that choice.
+
+<p align="center">
+  <img src="outputs/pca/pca_biplot.png" width="48%" alt="PCA biplot">
+  <img src="outputs/clustering/clustering_dashboard.png" width="48%" alt="Clustering dashboard">
+</p>
+<p align="center">
+  <img src="outputs/forecasting/ts_forecast_comparison.png" width="48%" alt="Forecast comparison">
+  <img src="outputs/pca/pca_dashboard.png" width="48%" alt="PCA dashboard">
+</p>
+
+### Run it
+
+```bash
+pip install -r requirements-dev.txt
+pip install statsmodels nbformat openpyxl
+jupyter notebook notebooks/Covid19_Forecasting_Clustering_PCA_Analysis.ipynb
+```
+
+Run all cells from top to bottom. `pmdarima`, `prophet`, `umap-learn` and `plotly` are optional; the matching cells are skipped if they are not installed. Figures, CSVs and Excel files are written to `outputs/forecasting/`, `outputs/clustering/` and `outputs/pca/` (set `SAVE_OUTPUTS = False` in the first cell to only display).
+
+---
+
 ## Project structure
 
 ```text
@@ -335,11 +403,16 @@ covid-19-portfolio/
 │   └── arima_model.pkl
 │
 ├── notebooks/
-│   └── COVID_19_analysis.ipynb    # narrative walkthrough of the same pipeline
+│   ├── COVID_19_analysis.ipynb    # narrative walkthrough of the same pipeline
+│   └── Covid19_Forecasting_Clustering_PCA_Analysis.ipynb   # forecasting + K-Means + PCA
 │
 ├── outputs/
 │   ├── figures/                   # 18 PNG charts
 │   ├── interactive/               # 6 Plotly HTML charts (~10 KB each, CDN mode)
+│   ├── forecasting/               # forecasting figures + Forecasting_Report.xlsx
+│   ├── clustering/                # clustering figures, CSVs, Clustering_Report.xlsx, 3D HTML
+│   ├── pca/                       # PCA figures, city_pca_coordinates.csv, PCA_Analysis_Report.xlsx
+│   ├── Pakistan_COVID19_Data_Analysis_Report.xlsx   # 37-sheet Excel report (live formulas)
 │   ├── COVID19_Analysis_Report.xlsx
 │   ├── Regression_Analysis_Report.xlsx   # 9 sheets, one per requirement
 │   ├── COVID19_Insights_Report.txt
@@ -356,15 +429,15 @@ covid-19-portfolio/
 
 | Technology | Purpose |
 |---|---|
-| Python 3.14 | Core language |
+| Python 3.12 (deployed) / 3.14 (local) | Core language |
 | pandas / NumPy | Data wrangling and numerics |
 | Matplotlib / Seaborn | Static visualisations |
 | Plotly | Interactive HTML charts |
-| scikit-learn | Regression learners, `GridSearchCV`, `TimeSeriesSplit` |
-| statsmodels | ARIMA, ADF stationarity tests |
+| scikit-learn | Regression learners, `GridSearchCV`, `TimeSeriesSplit`, K-Means, PCA, t-SNE |
+| statsmodels | ARIMA / SARIMA, Holt-Winters, ADF and KPSS stationarity tests |
 | SciPy | Statistical tests |
 | Streamlit | Interactive dashboard |
-| openpyxl | Excel report |
+| openpyxl | Excel reports (formulas, charts) |
 
 ---
 
@@ -461,6 +534,7 @@ python src/arima_forecast.py && python src/visualizations.py && python src/repor
   earlier 0.75 R² came from same-day leakage and a random split.
 - **ARIMA does not beat the naive one-day-ahead model** either, though it does beat the
   seasonal naive. The projection should be read as a scenario band.
+- **The clustering and PCA are dominated by two cities.** Karachi and Lahore hold 68% of cases, so on raw counts the first principal component and the K-Means split mostly say "big city vs the rest". The log-transform comparison in the notebook shows how sensitive the result is to that.
 - **`Recovered` is under-reported**, so the recovery rate is a lower bound.
 - **`Unknown` exposure source is a reporting gap**, and its 22,659 cases inflate the
   apparent local-transmission share.
