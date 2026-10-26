@@ -313,16 +313,25 @@ One extended notebook, [`notebooks/Covid19_Forecasting_Clustering_PCA_Analysis.i
 
 ### Forecasting
 
-The notebook uses a **14-day** hold-out and a short list of methods. The ARIMA section above uses a **21-day** hold-out and its own order search (`src/arima_forecast.py`). Different windows give different rankings, so the two sections should not be read as contradicting each other. What they agree on: for a series that was still rising fast, a naive "tomorrow = today" forecast is a hard baseline to beat, and anything beyond a week or so is wide open.
+The notebook holds out the last **14 days** and compares six methods fitted on the first 85 days. The ARIMA section above uses a **21-day** hold-out and its own order search (`src/arima_forecast.py`), so the two sections use different windows and should not be read as contradicting each other.
 
-In the **Excel workbook** (trained on the first 85 days, tested on the last 14, every model built from formulas):
+| Model (14-day test, Python) | MAE | RMSE | MAPE |
+|:--|--:|--:|--:|
+| **Holt-Winters (additive)** | 665 | **881** | 25.0% |
+| Holt-Winters (multiplicative) | 670 | 896 | 24.6% |
+| ARIMA(2,2,1) | 758 | 1,025 | 26.6% |
+| Naive (tomorrow = today) | 824 | 1,111 | 28.9% |
+| SARIMA(2,1,2)(1,0,1,7) | 875 | 1,186 | 29.1% |
+| Seasonal naive | 1,048 | 1,310 | 35.5% |
 
-| Model (14-day test) | RMSE |
-|:--|--:|
-| Naive | 1,111 |
-| **Holt-Winters (additive)** | **861** |
+Holt-Winters beats the naive forecast by about 21%; SARIMA does not, even though it has a weekly term. The Excel workbook rebuilds Holt-Winters, SES, Holt, AR/ARIMA(1,1,0) and Excel's own `FORECAST.ETS` from formulas and reaches the same conclusion (Holt-Winters RMSE 861 vs naive 1,111 on the same 14 days).
 
-Holt-Winters is about 22% better than naive on that window. The weekly pattern is clear: Monday is the highest reporting day (about 1.3x its weekly average), Sunday the lowest (about 0.8x). The Python results are printed in the notebook (sections A11 to A17) and saved to `outputs/forecasting/Forecasting_Report.xlsx`.
+Other results from the notebook:
+
+- **Weekly pattern:** Monday is the highest reporting day (about 1.3x its weekly average), Sunday the lowest (about 0.8x).
+- **Stationarity:** the ADF test (with lag selection) does not reject a unit root even after one difference (p about 0.95), so the notebook picks d = 2. A plain Dickey-Fuller regression without lags, as in the Excel sheet, says d = 1. Treat the order of differencing as a judgement call.
+- **Uncertainty:** the ARIMA 95% interval is about 5x wider on day 14 than on day 1, and only 57% of the test days fell inside it. Short-horizon error (days 1-7) is roughly a third of the error for days 8-14.
+- **Forecast:** the best model projects 4,782 cases on 04 Jun rising to 8,727 on 17 Jun (about 6,700 a day against 3,374 over the last 7 observed days). On a series that was still accelerating, read this as a scenario, not a prediction.
 
 ### Clustering (K = 3, city level, cities with at least 5 cases)
 
